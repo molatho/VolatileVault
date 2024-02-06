@@ -5,7 +5,7 @@ import { FsUtils } from '../fs';
 
 export const uploadRoute = express.Router();
 
-uploadRoute.use(bodyParser.raw({ limit: "10mb", type: "application/octet-stream" }))
+uploadRoute.use(bodyParser.raw({ limit: "100mb", type: "application/octet-stream" }))
 
 uploadRoute.post('/api/files/upload', async (req: Request, res: Response) => {
     var body = req.body as Buffer;

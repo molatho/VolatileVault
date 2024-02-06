@@ -22,7 +22,7 @@ interface FsDatabase {
     putFile(path: string): Promise<FileInfo>;
 }
 
-const fileids = new ShortUniqueId({ length: 6 });
+const fileids = new ShortUniqueId({ length: 6, dictionary: "alpha_upper" });
 const pathids = new ShortUniqueId({ length: 10 });
 
 class InMemoryDatabase implements FsDatabase {
