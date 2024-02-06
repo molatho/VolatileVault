@@ -1,0 +1,31 @@
+{
+  "name": "node-react-docker-compose",
+  "version": "1.0.0",
+  "description": "A reference for running a node server and create-react-app app via docker-compose.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "ts-node ./src/server.ts",
+    "start:prod": "npm run build && node ./dist/src/server.js",
+    "start:nodemon": "npx nodemon ./src/server.ts",
+    "build": "npx tsc"
+  },
+  "author": "Peter Coles",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node-cron": "^3.0.11",
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.4.1",
+    "express": "^4.17.1",
+    "express-jwt": "^8.4.1",
+    "node-cron": "^3.0.3",
+    "otpauth": "^9.2.2",
+    "short-unique-id": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.16",
+    "nodemon": "^3.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
