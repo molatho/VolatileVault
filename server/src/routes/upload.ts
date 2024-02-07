@@ -14,8 +14,8 @@ uploadRoute.post('/api/files/upload', async (req: Request, res: Response) => {
 
     try {
         var file = await FsUtils.putFile(Readable.from(body));
-        return res.status(201).send(JSON.stringify(file));
+        return res.status(201).json(file);
     } catch (error) {
-        return res.status(400).send(error);
+        return res.status(400).json(error);
     }
 });

@@ -30,6 +30,6 @@ downloadRoute.get('/api/files/download/:id', async (req: Request, res: Response)
 
         res.end();
     } catch (error) {
-        res.status(400).send(error).end();
+        res.status(400).json(error);
     }
 });
