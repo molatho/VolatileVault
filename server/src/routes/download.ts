@@ -6,30 +6,30 @@ import bodyParser from 'body-parser';
 export const downloadRoute = express.Router();
 
 interface FileRequestData {
-    id?: string;
+  id?: string;
 }
-
 
 downloadRoute.use(bodyParser.json());
 
-downloadRoute.get('/api/files/download/:id', async (req: Request, res: Response) => {
+downloadRoute.get(
+  '/api/files/download/:id',
+  async (req: Request, res: Response) => {
     var id = req.params?.id;
-    if (!id)
-        return res.status(400).send();
+    if (!id) return res.status(400).send();
 
     try {
-        var [stream, length] = await FsUtils.getFile(id);
+      var [stream, length] = await FsUtils.getFile(id);
 
-        res.writeHead(200, {
-            "Content-Type": "application/octet-stream",
-            "Content-Length": length.toString()
-        })
+      res.writeHead(200, {
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': length.toString(),
+      });
 
-        for await (const data of stream)
-            res.write(data, "binary");
+      for await (const data of stream) res.write(data, 'binary');
 
-        res.end();
+      res.end();
     } catch (error) {
-        res.status(400).json(error);
+      res.status(400).json(error);
     }
-});
+  }
+);

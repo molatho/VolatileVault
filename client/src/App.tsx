@@ -10,11 +10,10 @@ const theme = createTheme({
   },
 });
 
-
 function App() {
   return (
     <ThemeProvider theme={theme}>
-      <SnackbarProvider preventDuplicate={true}/>
+      <SnackbarProvider preventDuplicate={true} />
       <CssBaseline />
       <Main />
     </ThemeProvider>
