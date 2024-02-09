@@ -35,6 +35,10 @@ app.use(
 
 app.use(routes);
 
+app.use((error, req, res, next) => {
+  return res.status(400).json({ message: error?.message ?? 'Failure' });
+});
+
 cron.schedule('0 * * * * *', () => {
   FsUtils.cleanup(1000 * 60 * parseInt(process.env.FILE_EXPIRY));
 });

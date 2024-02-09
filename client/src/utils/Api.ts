@@ -5,17 +5,23 @@ export interface ApiResponse {
   message: string;
 }
 
-export interface ApiGetAuthResponse extends ApiResponse {
+export interface ApiGetAuthResponse extends ApiResponse {}
+
+export interface ApiAuthResponse extends ApiResponse {
   token?: string;
 }
 
-export interface ApiAuthResponse extends ApiResponse {
+export interface ApiUploadResponse extends ApiResponse {
   id?: string;
-  creationDate?: Date;
+  lifeTime?: number;
+}
+
+export interface ApiConfigResponse extends ApiResponse {
+  fileSize?:number;
 }
 
 export default class Api {
-  private token?: string = undefined;
+  public token?: string = undefined;
   private static BASE_URL: string = process.env.REACT_APP_BASE_URL ?? '';
 
   private static fail_from_error(
@@ -49,9 +55,48 @@ export default class Api {
         { headers: { 'content-type': 'application/json' } }
       )
       .then((res) => {
-        if (res.data?.token) this.token = res.data.token;
+        if (!res.data?.token)
+          return Promise.reject(
+            Api.fail_from_error(undefined, 'Failed to receive JWT')
+          );
+        this.token = res.data.token;
         return Api.success_from_data(res.data) as ApiGetAuthResponse;
       })
       .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+  }
+
+  public upload(blob: ArrayBuffer): Promise<ApiUploadResponse> {
+    return axios
+      .post(Api.BASE_URL + '/api/files/upload', blob, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          Authorization: `Bearer ${this.token}`,
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+        responseType: 'json',
+      })
+      .then((res) => {
+        if (!res.data?.id)
+          return Promise.reject(
+            Api.fail_from_error(undefined, 'Failed to upload file ID')
+          );
+        return Api.success_from_data(res.data) as ApiUploadResponse;
+      })
+      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+  }
+
+  public config():Promise<ApiConfigResponse>{
+    return axios
+      .get(Api.BASE_URL + '/api/config', {
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+        },
+        responseType: 'json',
+      })
+      .then((res) => Api.success_from_data(res.data) as ApiConfigResponse)
+      .catch((err) =>
+        Promise.reject<ApiResponse>(Api.fail_from_error(err))
+      );
   }
 }

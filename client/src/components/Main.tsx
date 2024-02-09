@@ -13,7 +13,7 @@ import {
   Tabs,
 } from '@mui/material';
 import React from 'react';
-import Api, { ApiResponse } from '../utils/Api';
+import Api, { ApiConfigResponse, ApiResponse } from '../utils/Api';
 import Upload from './Upload';
 import Download from './Download';
 import { enqueueSnackbar } from 'notistack';
@@ -21,28 +21,27 @@ import { enqueueSnackbar } from 'notistack';
 export default function Main() {
   const [api, setApi] = React.useState(new Api());
   const [authenticated, setAuthenticated] = React.useState<boolean | undefined>(
-    // undefined
-    true
+    undefined
   );
-  const [totp, setTotp] = React.useState('');
+  const [totp, setTotp] = React.useState('123456');
   const [totpEditAvailable, setTotpEditAvailable] = React.useState(true);
   const [lastError, setLastError] = React.useState<string | undefined>(
     undefined
   );
   const [tabIdx, setTabIdx] = React.useState(0);
 
-  // React.useEffect(() => {
-  //   api
-  //     .isAuthenticated()
-  //     .then((res) => setAuthenticated(res.success))
-  //     .catch((err) => {
-  //       enqueueSnackbar({
-  //         message: 'You need to authenticate',
-  //         variant: 'info',
-  //       });
-  //       setAuthenticated(false);
-  //     });
-  // }, []);
+  React.useEffect(() => {
+    api
+      .isAuthenticated()
+      .then((res) => setAuthenticated(res.success))
+      .catch((err) => {
+        enqueueSnackbar({
+          message: 'You need to authenticate',
+          variant: 'info',
+        });
+        setAuthenticated(false);
+      });
+  }, []);
 
   const onTotpChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setTotp(event.target.value);
@@ -63,15 +62,13 @@ export default function Main() {
       })
       .catch((err: ApiResponse) => {
         setLastError(err.message);
-        enqueueSnackbar({ message: err.message, variant: 'error' });
-      })
-      .finally(() =>
         setTimeout(() => {
           setLastError(undefined);
           setTotpEditAvailable(true);
           setTotp('');
         }, 1000)
-      );
+        enqueueSnackbar({ message: err.message, variant: 'error' });
+      })
   };
 
   return (
@@ -79,10 +76,7 @@ export default function Main() {
       <CssBaseline />
       <Container component="main" maxWidth="md" sx={{ mb: 4, mt: 4 }}>
         <Card sx={{ maxWidth: 1600 }}>
-          <CardMedia
-            sx={{ height: 200 }}
-            image={require('../assets/vault.png')}
-          />
+          <CardMedia sx={{ height: 200 }} image="vault.png" />
           <CardContent>
             <Stack direction="row" alignItems="center" spacing={1}>
               <Lock color="primary" />
@@ -130,11 +124,11 @@ export default function Main() {
                 onChange={(_, idx) => setTabIdx(idx)}
                 aria-label="basic tabs example"
               >
-                <Tab label="Download" />
                 <Tab label="Upload" />
+                <Tab label="Download" />
               </Tabs>
-              {tabIdx == 0 && <Download />}
-              {tabIdx == 1 && <Upload />}
+              {tabIdx == 0 && <Upload api={api}/>}
+              {tabIdx == 1 && <Download />}
             </CardContent>
           )}
         </Card>

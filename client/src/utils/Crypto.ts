@@ -1,7 +1,12 @@
-const makeKey = async (key: string): Promise<CryptoKey> => {
+const makeKey = async (password: string): Promise<CryptoKey> => {
+  const raw = new TextEncoder().encode(password);
+  const key = new Uint8Array(32);
+  if (raw.length < key.length)
+    for (var i = 0; i < key.length; i++) key[i] = raw[i % raw.length]; // Pad key with repetitions of password
+
   return await crypto.subtle.importKey(
     'raw',
-    Buffer.from(key, 'utf-8'),
+    key,
     {
       name: 'AES-GCM',
       length: 256,
@@ -14,7 +19,7 @@ const makeKey = async (key: string): Promise<CryptoKey> => {
 export const encryptSymmetric = async (
   plaintext: ArrayBuffer,
   key: string
-): Promise<[ArrayBuffer, Uint8Array]> => {
+): Promise<[ArrayBuffer, ArrayBuffer]> => {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const secretKey = await makeKey(key);
 
@@ -27,12 +32,12 @@ export const encryptSymmetric = async (
     plaintext
   );
 
-  return [ciphertext, iv];
+  return [ciphertext, iv.buffer];
 };
 
 export const decryptSymmetric = async (
-  ciphertext: Buffer,
-  iv: Buffer,
+  ciphertext: ArrayBuffer,
+  iv: ArrayBuffer,
   key: string
 ): Promise<ArrayBuffer> => {
   const secretKey = await makeKey(key);
