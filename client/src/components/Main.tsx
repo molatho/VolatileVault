@@ -12,7 +12,7 @@ import {
   Tab,
   Tabs,
 } from '@mui/material';
-import React from 'react';
+import React, { useEffect } from 'react';
 import Api, { ApiResponse } from '../utils/Api';
 import Upload from './Upload';
 import Download from './Download';
@@ -47,7 +47,8 @@ export default function Main() {
     setTotp(event.target.value);
   };
 
-  const onAuthenticate = () => {
+  useEffect(() => {
+    if (totp.length !== 6) return;
     setLastError(undefined);
     setTotpEditAvailable(false);
     api
@@ -69,7 +70,9 @@ export default function Main() {
         }, 1000);
         enqueueSnackbar({ message: err.message, variant: 'error' });
       });
-  };
+  }, [totp]);
+
+  const onAuthenticate = () => {};
 
   return (
     <React.Fragment>
@@ -106,13 +109,6 @@ export default function Main() {
                     onChange={onTotpChange}
                     error={lastError !== undefined}
                   />
-                  <Button
-                    variant="contained"
-                    disabled={!totpEditAvailable || totp.length != 6}
-                    onClick={onAuthenticate}
-                  >
-                    Authenticate
-                  </Button>
                 </Stack>
               </CardContent>
             </>

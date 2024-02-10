@@ -30,6 +30,7 @@ import { enqueueSnackbar } from 'notistack';
 import moment from 'moment';
 import EnterPassword from './EnterPassword';
 import { calcSize, formatSize } from '../utils/Files';
+import { fromArrayBuffer } from '../utils/Entropy';
 
 interface FileSelectionProps {
   onFilesSelected: (files: File[]) => void;
@@ -64,7 +65,8 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
     borderColor: '#ff1744',
   };
 
-  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [entropies, setEntropies] = useState<{ [key: string]: number }>({});
 
   const {
     acceptedFiles,
@@ -88,8 +90,40 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
   const summaryRef = createRef<HTMLTableRowElement>();
 
   useEffect(() => {
-    setSelectedFiles(selectedFiles.concat(acceptedFiles));
+    // Remove duplicates
+    setSelectedFiles(
+      selectedFiles
+        .concat(acceptedFiles)
+        .filter(
+          (f, i, a) =>
+            i == a.length - 1 ||
+            a.slice(i + 1).findIndex((_f) => _f.name == f.name) === -1
+        )
+    );
   }, [acceptedFiles]);
+
+  useEffect(() => {
+    Promise.all(
+      selectedFiles.map(async (file) => {
+        if (Object.keys(entropies).findIndex((k) => k == file.name) === -1) {
+          const data = await file.arrayBuffer();
+          entropies[file.name] = fromArrayBuffer(data);
+          setEntropies({ ...entropies });
+        }
+        return entropies;
+      })
+    ).then((res) => {
+      // Remove entries of files that were removed already
+      if (res.length)
+        setEntropies(
+          Object.keys(res[res.length - 1]).reduce((res, key) => {
+            if (selectedFiles.findIndex((f) => f.name == key) !== -1)
+              res[key] = entropies[key];
+            return res;
+          }, {} as { [key: string]: number })
+        );
+    });
+  }, [selectedFiles]);
 
   useEffect(() => {
     summaryRef?.current?.scrollIntoView({ behavior: 'smooth' });
@@ -107,6 +141,11 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
     >
       <TableCell component="th" scope="row">
         {file.name}
+      </TableCell>
+      <TableCell align="right">
+        {Object.keys(entropies).findIndex((k) => k == file.name) !== -1
+          ? entropies[file.name].toFixed(2)
+          : 'n/a'}
       </TableCell>
       <TableCell align="right">{formatSize(file.size)}</TableCell>
       <TableCell align="center">
@@ -141,6 +180,9 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
             <TableRow>
               <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }} align="right">
+                Entropy
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }} align="right">
                 Size
               </TableCell>
               <TableCell sx={{ fontWeight: 'bold' }} align="right">
@@ -156,7 +198,7 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
           <Typography>{`Total: ${selectedFiles.length} files`}</Typography>
         </Grid>
         <Grid item xs={4}>
-          <Typography>{formatSize(calcSize(selectedFiles))}</Typography>
+          <Typography>Size: {formatSize(calcSize(selectedFiles))}</Typography>
         </Grid>
         <Grid item xs={4}>
           <Box display="flex" justifyContent="flex-end">
@@ -193,9 +235,10 @@ function DataInput({ onFinished, maxFileSize }: DataInputProps) {
       {maxFileSize && calcSize(files) > maxFileSize && (
         <Alert severity="warning">
           <AlertTitle>Maximum file size </AlertTitle>A maximum of{' '}
-          {formatSize(maxFileSize)} can be uploaded. While the selected files
-          will be compressed in the next step, you may want to consider
-          selecting fewer files for this upload.
+          {formatSize(maxFileSize)} can be uploaded. The selected files will be
+          compressed in the next step, however it may be ineffective when
+          handling high-entropy data. You may want to consider selecting fewer
+          files for this upload.
         </Alert>
       )}
       <Box display="flex" justifyContent="flex-end">
@@ -301,9 +344,9 @@ function ProcessUpload({
         );
         addEntry(
           'Compression',
-          `Done: ${formatSize(calcSize(files))} -> ${formatSize(
+          `Done: compressed ${formatSize(calcSize(files))} to ${formatSize(
             blob.byteLength
-          )}`,
+          )} (entropy: ${fromArrayBuffer(blob).toFixed(2)})`,
           'success'
         );
         return blob;
@@ -315,7 +358,9 @@ function ProcessUpload({
       .then(([cipher, iv]) => {
         addEntry(
           'Encryption',
-          `Done: ${formatSize(cipher.byteLength)}`,
+          `Done: ${formatSize(cipher.byteLength)} (entropy: ${fromArrayBuffer(
+            cipher
+          ).toFixed(2)})`,
           'success'
         );
         setEncData(cipher);
