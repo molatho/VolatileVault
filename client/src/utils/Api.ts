@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Config from './Config';
 
 export interface ApiResponse {
   success: boolean;
@@ -26,7 +27,7 @@ export interface ApiConfigResponse extends ApiResponse {
 
 export default class Api {
   public token?: string = undefined;
-  private static BASE_URL: string = process.env.REACT_APP_BASE_URL ?? '';
+  private static BASE_URL: string = Config.BASE_URL;
 
   private static fail_from_error(
     error: any,

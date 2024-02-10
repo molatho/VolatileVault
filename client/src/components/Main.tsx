@@ -13,7 +13,7 @@ import {
   Tabs,
 } from '@mui/material';
 import React from 'react';
-import Api, { ApiConfigResponse, ApiResponse } from '../utils/Api';
+import Api, { ApiResponse } from '../utils/Api';
 import Upload from './Upload';
 import Download from './Download';
 import { enqueueSnackbar } from 'notistack';
@@ -66,9 +66,9 @@ export default function Main() {
           setLastError(undefined);
           setTotpEditAvailable(true);
           setTotp('');
-        }, 1000)
+        }, 1000);
         enqueueSnackbar({ message: err.message, variant: 'error' });
-      })
+      });
   };
 
   return (
@@ -127,7 +127,7 @@ export default function Main() {
                 <Tab label="Upload" />
                 <Tab label="Download" />
               </Tabs>
-              {tabIdx == 0 && <Upload api={api}/>}
+              {tabIdx == 0 && <Upload api={api} />}
               {tabIdx == 1 && <Download api={api} />}
             </CardContent>
           )}

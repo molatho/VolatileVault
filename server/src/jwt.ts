@@ -1,9 +1,7 @@
 import { expressjwt } from 'express-jwt';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import config from './config';
 
 export const jwt = expressjwt({
-  secret: process.env.JTW_KEY,
+  secret: config.JWT_KEY,
   algorithms: ['HS512'],
 });

@@ -1,6 +1,5 @@
 import express, { Request, Response } from 'express';
 import { FsUtils } from '../fs';
-import { pipeline } from 'stream/promises';
 import bodyParser from 'body-parser';
 
 export const downloadRoute = express.Router();

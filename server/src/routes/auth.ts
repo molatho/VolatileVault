@@ -1,10 +1,8 @@
 import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import OTPAuth from 'otpauth';
-import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
-
-dotenv.config();
+import config from '../config';
 
 export const authRoute = express.Router();
 
@@ -16,7 +14,7 @@ const totp = new OTPAuth.TOTP({
   algorithm: 'SHA1',
   digits: 6,
   period: 30,
-  secret: process.env.TOTP_SECRET,
+  secret: config.TOTP_SECRET,
 });
 
 authRoute.use(bodyParser.json());
@@ -35,9 +33,9 @@ authRoute.post('/api/auth', (req: Request, res: Response) => {
   )
     return res.status(401).json({ message: 'Invalid TOTP' });
 
-  var _jwt = jwt.sign({}, process.env.JTW_KEY, {
+  var _jwt = jwt.sign({}, config.JWT_KEY, {
     algorithm: 'HS512',
-    expiresIn: `${process.env.JWT_EXPIRY}m`,
+    expiresIn: `${config.JWT_EXPIRY}m`,
     subject: 'volatile.vault.dweller',
   });
   res.status(200).json({ message: 'Authentication success', token: _jwt });

@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import { ReadStream } from 'fs';
 import fs, { constants } from 'fs/promises';
 import fsSync from 'fs';
@@ -6,8 +5,7 @@ import path from 'path';
 import ShortUniqueId from 'short-unique-id';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'node:stream';
-
-dotenv.config();
+import config from './config';
 
 export interface FileInfo {
   id: string;
@@ -74,7 +72,7 @@ export class FsUtils {
   private static db: FsDatabase = new InMemoryDatabase();
 
   private static get dir() {
-    return path.resolve(process.env.FS_FOLDER);
+    return path.resolve(config.FS_FOLDER);
   }
 
   public static async init(): Promise<void> {

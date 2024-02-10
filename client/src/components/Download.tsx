@@ -203,7 +203,7 @@ export default function Download({ api }: DownloadProps) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {files.map((f,i ) => (
+            {files.map((f, i) => (
               <TableRow key={i}>
                 <TableCell>{f.name}</TableCell>
                 <TableCell>
