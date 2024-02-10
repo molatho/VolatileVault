@@ -23,7 +23,7 @@ export default function Main() {
   const [authenticated, setAuthenticated] = React.useState<boolean | undefined>(
     undefined
   );
-  const [totp, setTotp] = React.useState('123456');
+  const [totp, setTotp] = React.useState('');
   const [totpEditAvailable, setTotpEditAvailable] = React.useState(true);
   const [lastError, setLastError] = React.useState<string | undefined>(
     undefined
@@ -128,7 +128,7 @@ export default function Main() {
                 <Tab label="Download" />
               </Tabs>
               {tabIdx == 0 && <Upload api={api}/>}
-              {tabIdx == 1 && <Download />}
+              {tabIdx == 1 && <Download api={api} />}
             </CardContent>
           )}
         </Card>

@@ -16,8 +16,12 @@ export interface ApiUploadResponse extends ApiResponse {
   lifeTime?: number;
 }
 
+export interface ApiDownloadResponse extends ApiResponse {
+  data: ArrayBuffer;
+}
+
 export interface ApiConfigResponse extends ApiResponse {
-  fileSize?:number;
+  fileSize?: number;
 }
 
 export default class Api {
@@ -86,7 +90,32 @@ export default class Api {
       .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
   }
 
-  public config():Promise<ApiConfigResponse>{
+  public download(id: string): Promise<ApiDownloadResponse> {
+    return axios
+      .get(`${Api.BASE_URL}/api/files/download/${id}`, {
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+        },
+        responseType: 'arraybuffer',
+      })
+      .then((res) => {
+        if (!res.data)
+          return Promise.reject(
+            Api.fail_from_error(undefined, 'Failed to download data')
+          );
+        return Api.success_from_data({ data: res.data }) as ApiDownloadResponse;
+      })
+      .catch((err) =>
+        Promise.reject(
+          Api.fail_from_error(
+            err,
+            err?.response?.status == 404 ? 'ID not found' : 'Failure'
+          ) as ApiDownloadResponse
+        )
+      );
+  }
+
+  public config(): Promise<ApiConfigResponse> {
     return axios
       .get(Api.BASE_URL + '/api/config', {
         headers: {
@@ -95,8 +124,6 @@ export default class Api {
         responseType: 'json',
       })
       .then((res) => Api.success_from_data(res.data) as ApiConfigResponse)
-      .catch((err) =>
-        Promise.reject<ApiResponse>(Api.fail_from_error(err))
-      );
+      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
   }
 }

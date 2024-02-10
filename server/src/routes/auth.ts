@@ -29,12 +29,11 @@ authRoute.get('/api/auth', (req: Request, res: Response) => {
 authRoute.post('/api/auth', (req: Request, res: Response) => {
   var _totp = req.body as TotpRequestData;
 
-  // TODO: Remove comments after testing :)
-  // if (
-  //   !_totp?.totp ||
-  //   totp.validate({ token: _totp.totp.replace(/\s/g, ''), window: 3 }) == null
-  // )
-  //   return res.status(401).json({ message: 'Invalid TOTP' });
+  if (
+    !_totp?.totp ||
+    totp.validate({ token: _totp.totp.replace(/\s/g, ''), window: 3 }) == null
+  )
+    return res.status(401).json({ message: 'Invalid TOTP' });
 
   var _jwt = jwt.sign({}, process.env.JTW_KEY, {
     algorithm: 'HS512',

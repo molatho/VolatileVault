@@ -15,7 +15,7 @@ downloadRoute.get(
   '/api/files/download/:id',
   async (req: Request, res: Response) => {
     var id = req.params?.id;
-    if (!id) return res.status(400).send();
+    if (!id) return res.status(404).send();
 
     try {
       var [stream, length] = await FsUtils.getFile(id);
@@ -29,7 +29,7 @@ downloadRoute.get(
 
       res.end();
     } catch (error) {
-      res.status(400).json(error);
+      res.status(404).json(error);
     }
   }
 );

@@ -26,7 +26,8 @@ export const encryptSymmetric = async (
   const ciphertext = await crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
-      iv,
+      iv: iv,
+      tagLength: 128,
     },
     secretKey,
     plaintext
@@ -46,6 +47,7 @@ export const decryptSymmetric = async (
     {
       name: 'AES-GCM',
       iv: iv,
+      tagLength: 128,
     },
     secretKey,
     ciphertext

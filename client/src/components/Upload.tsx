@@ -10,17 +10,12 @@ import {
   Typography,
   useTheme,
   Button,
-  Fab,
   Stepper,
   Step,
   StepLabel,
   Grid,
-  ButtonGroup,
   Box,
   Stack,
-  TextField,
-  LinearProgress,
-  CircularProgress,
   Alert,
   AlertTitle,
 } from '@mui/material';
@@ -28,14 +23,13 @@ import React, { createRef, useEffect, useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import bytes from 'bytes';
 import jszip from 'jszip';
 import { encryptSymmetric } from '../utils/Crypto';
 import Api, { ApiConfigResponse } from '../utils/Api';
 import { enqueueSnackbar } from 'notistack';
 import moment from 'moment';
+import EnterPassword from './EnterPassword';
+import { calcSize, formatSize } from '../utils/Files';
 
 interface FileSelectionProps {
   onFilesSelected: (files: File[]) => void;
@@ -114,9 +108,7 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
       <TableCell component="th" scope="row">
         {file.name}
       </TableCell>
-      <TableCell align="right">
-        {bytes.format(file.size, { decimalPlaces: 2 })}
-      </TableCell>
+      <TableCell align="right">{formatSize(file.size)}</TableCell>
       <TableCell align="center">
         <IconButton
           aria-label="delete"
@@ -164,9 +156,7 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
           <Typography>{`Total: ${selectedFiles.length} files`}</Typography>
         </Grid>
         <Grid item xs={4}>
-          <Typography>
-            {bytes.format(calcFileSize(selectedFiles), { decimalPlaces: 2 })}
-          </Typography>
+          <Typography>{formatSize(calcSize(selectedFiles))}</Typography>
         </Grid>
         <Grid item xs={4}>
           <Box display="flex" justifyContent="flex-end">
@@ -185,76 +175,6 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
   );
 }
 
-interface EnterPasswordProps {
-  onPasswordEntered: (password: string) => void;
-}
-
-function EnterPassword({ onPasswordEntered }: EnterPasswordProps) {
-  const [password1, setPassword1] = useState('123');
-  const [password2, setPassword2] = useState('123');
-  const [show, setShow] = useState(false);
-
-  const onPwd1Change = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword1(event.target.value);
-  };
-  const onPwd2Change = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword2(event.target.value);
-  };
-
-  const okay = password1.length > 0 && password1 == password2;
-
-  useEffect(() => {
-    if (okay) onPasswordEntered(password1);
-  }, [password1, password2]);
-
-  const pwd1Error = () => {
-    if (password1.length == 0) return 'Must not be empty';
-    return null;
-  };
-  const pwd2Error = () => {
-    if (password2.length == 0) return 'Must not be empty';
-    if (password2 != password1) return 'Passwords do not match';
-    return null;
-  };
-
-  return (
-    <>
-      <Typography variant="h5" px={2}>
-        Password
-      </Typography>
-      <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
-        <TextField
-          label="Password"
-          id="outlined-code-small"
-          value={password1}
-          size="small"
-          type={show ? 'text' : 'password'}
-          onChange={onPwd1Change}
-          error={!okay}
-          helperText={pwd1Error()}
-        />
-        <TextField
-          label="Confirmation"
-          id="outlined-code-small"
-          value={password2}
-          size="small"
-          type={show ? 'text' : 'password'}
-          onChange={onPwd2Change}
-          error={!okay}
-          helperText={pwd2Error()}
-        />
-        <IconButton size="small" onClick={() => setShow(!show)}>
-          {show ? <VisibilityOffIcon /> : <VisibilityIcon />}
-        </IconButton>
-      </Stack>
-    </>
-  );
-}
-
-function calcFileSize(files: File[]): number {
-  return files.reduce((n, file) => n + file.size, 0);
-}
-
 interface DataInputProps {
   onFinished: (files: File[], password: string) => void;
   maxFileSize?: number;
@@ -264,18 +184,18 @@ function DataInput({ onFinished, maxFileSize }: DataInputProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState('');
 
-  const size = calcFileSize(files);
+  const size = calcSize(files);
 
   return (
     <Stack direction="column" spacing={2}>
       <FileSelection onFilesSelected={setFiles} />
-      <EnterPassword onPasswordEntered={setPassword} />
-      {maxFileSize && calcFileSize(files) > maxFileSize && (
+      <EnterPassword onPasswordEntered={setPassword} confirm />
+      {maxFileSize && calcSize(files) > maxFileSize && (
         <Alert severity="warning">
           <AlertTitle>Maximum file size </AlertTitle>A maximum of{' '}
-          {bytes.format(maxFileSize, { decimalPlaces: 2 })} can be uploaded.
-          While the selected files will be compressed in the next step, you may
-          want to consider selecting fewer files for this upload.
+          {formatSize(maxFileSize)} can be uploaded. While the selected files
+          will be compressed in the next step, you may want to consider
+          selecting fewer files for this upload.
         </Alert>
       )}
       <Box display="flex" justifyContent="flex-end">
@@ -381,9 +301,9 @@ function ProcessUpload({
         );
         addEntry(
           'Compression',
-          `Done: ${bytes.format(calcFileSize(files), {
-            decimalPlaces: 2,
-          })} -> ${bytes.format(blob.byteLength, { decimalPlaces: 2 })}`,
+          `Done: ${formatSize(calcSize(files))} -> ${formatSize(
+            blob.byteLength
+          )}`,
           'success'
         );
         return blob;
@@ -395,11 +315,12 @@ function ProcessUpload({
       .then(([cipher, iv]) => {
         addEntry(
           'Encryption',
-          `Done: ${bytes.format(cipher.byteLength, { decimalPlaces: 2 })}`,
+          `Done: ${formatSize(cipher.byteLength)}`,
           'success'
         );
         setEncData(cipher);
         setEncIv(iv);
+        return Promise.resolve([cipher, iv]);
       })
       .catch((err) => {
         enqueueSnackbar({
@@ -415,17 +336,17 @@ function ProcessUpload({
     const data = encData as ArrayBuffer;
     const iv = encIv as ArrayBuffer;
     var tmp = new Uint8Array(data.byteLength + iv.byteLength);
-    tmp.set(new Uint8Array(data), 0);
-    tmp.set(new Uint8Array(iv), data.byteLength);
+    tmp.set(new Uint8Array(iv), 0);
+    tmp.set(new Uint8Array(data), iv.byteLength);
 
     if (maxFileSize && tmp.byteLength > maxFileSize) {
       addEntry(
         'ERROR',
-        `File size ${bytes.format(tmp.byteLength, {
-          decimalPlaces: 2,
-        })} exceeds the allowed maximum of ${bytes.format(maxFileSize, {
-          decimalPlaces: 2,
-        })}; aborting.`,
+        `File size ${formatSize(
+          tmp.byteLength
+        )} exceeds the allowed maximum of ${formatSize(
+          maxFileSize
+        )}; aborting.`,
         'error'
       );
       return;
