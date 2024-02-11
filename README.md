@@ -3,16 +3,17 @@
   <h1>Volatile Vault</h1>
   <br/>
 
-  <p><i>Volatile Vault (V2) is a secure data exfiltration & dropper platform for Red Team Operators by <a href="https://github.com/molatho">@molatho</a>.</i></p>
+  <p><i>Volatile Vault is a secure data exfiltration & dropper platform for Red Team Operators by <a href="https://github.com/molatho">@molatho</a>.</i></p>
+  <p><i>Inspired by <a href="https://github.com/sc0tfree/updog">updog</a>.</i></p>
   <br />
   
 </div>
 
 # Screenshots
 <div align="center">
-  <img width="600px" src="screenshots/screenshot1-select.png" />
-  <img width="600px" src="screenshots/screenshot2-upload.png" />
-  <img width="600px" src="screenshots/screenshot3-download.png"  />
+  <img width="400px" src="screenshots/screenshot1-select.png" />
+  <img width="400px" src="screenshots/screenshot2-upload.png" />
+  <img width="400px" src="screenshots/screenshot3-download.png"  />
 </div>
 
 # Use Cases
