@@ -3,7 +3,7 @@
   <h1>Volatile Vault</h1>
   <br/>
 
-  <p><i>Volatile Vault (V2) is a secure data exfiltration platform by <a href="https://github.com/molatho">@molatho</a>.</i></p>
+  <p><i>Volatile Vault (V2) is a secure data exfiltration & dropper platform for Red Team Operators by <a href="https://github.com/molatho">@molatho</a>.</i></p>
   <br />
   
 </div>
@@ -15,11 +15,17 @@
   <img width="600px" src="screenshots/screenshot3-download.png"  />
 </div>
 
+# Use Cases
+
+* **Data exfiltration**: Operators can upload sensitive files from compromised target systems to exfiltrate data securely, without any reliance on potentially untrustworthy third-parties.
+* **Dropping implants**: Operators can upload implants from their machines and download them on target systems and leverage HTML smuggling to more covertly transmit and deploy their implants. 
+
 # Features
 
 * **Zero trust**: All data is encrypted/decrypted (using AES-GCM) and compressed/decompressed (ZIP DEFLATE) in the browser, no sensitive data hits the backend in plain text and no potentially sensitive key material ever leaves the browser.
 * **Volatile storage**: All uploaded data has a preconfigured life-time (e.g. one hour) after which it gets deleted on the server side. Any previously stored encrypted blobs are removed on the server side upon startup of the server application.
 * **TOTP authentication**: Access to the service is granted by using a shared secret for TOTP authentication, making it easy to use and more resilient to credential leakage.
+* **Configurable**: Specifics such as the maximum allowed file size and life time of uploaded blobs can be configured using `.env` files before deployment of the application.
 
 ## Roadmap
 * **Chunks + HTTPS redirectors**: Upload the encrypted blobs in chunks via a range of HTTP redirectors pointing to the service.

@@ -1,6 +1,6 @@
 import { routes } from './routes';
 import express, { Response, NextFunction } from 'express';
-import { jwt } from './jwt';
+import { Keys, jwt } from './jwt';
 import { Request as JWTRequest, UnauthorizedError } from 'express-jwt';
 import { FsUtils } from './fs';
 import bodyParser from 'body-parser';

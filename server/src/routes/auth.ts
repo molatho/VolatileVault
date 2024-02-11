@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import OTPAuth from 'otpauth';
 import bodyParser from 'body-parser';
 import config from '../config';
+import { Keys } from '../jwt';
 
 export const authRoute = express.Router();
 
@@ -33,8 +34,8 @@ authRoute.post('/api/auth', (req: Request, res: Response) => {
   )
     return res.status(401).json({ message: 'Invalid TOTP' });
 
-  var _jwt = jwt.sign({}, config.JWT_KEY, {
-    algorithm: 'HS512',
+  var _jwt = jwt.sign({}, Keys.getInstance().privateKey, {
+    algorithm: 'RS512',
     expiresIn: `${config.JWT_EXPIRY}m`,
     subject: 'volatile.vault.dweller',
   });
