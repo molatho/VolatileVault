@@ -488,7 +488,7 @@ function UploadInfoElement({ info }: UploadInfoElementProps) {
           Your download ID is <b>{info.id}</b>. Please note it down as it won't
           be shown to you again.
           <br />
-          The uploaded data will be removed in {remaining} without any futher
+          The uploaded data will be removed in {remaining} without any further
           notice.
         </Alert>
       </Box>
