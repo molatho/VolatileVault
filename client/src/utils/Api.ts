@@ -25,34 +25,47 @@ export interface ApiConfigResponse extends ApiResponse {
   fileSize?: number;
 }
 
+export interface ApiUploadChunkResponse extends ApiResponse {
+  id?: string;
+  lifeTime?: number;
+}
+export interface ApiRegisterDomains extends ApiResponse {
+  transferId?: string;
+  domains?: Array<string>;
+};
+export interface ApiReleaseDomains extends ApiResponse {
+  transferId?: string;
+  domains?: Array<string>;
+};
+
 export default class Api {
   public token?: string = undefined;
   private static BASE_URL: string = Config.BASE_URL;
-
+  
   private static fail_from_error(
     error: any,
     defaultMessage: string = 'Failure'
-  ): ApiResponse {
-    return {
-      success: false,
-      message: error?.response?.data?.message ?? defaultMessage,
-    };
-  }
-
-  private static success_from_data(data: any): ApiResponse {
-    return { ...data, success: true };
-  }
-
-  public isAuthenticated(): Promise<ApiGetAuthResponse> {
-    return axios
+    ): ApiResponse {
+      return {
+        success: false,
+        message: error?.response?.data?.message ?? defaultMessage,
+      };
+    }
+    
+    private static success_from_data(data: any): ApiResponse {
+      return { ...data, success: true };
+    }
+    
+    public isAuthenticated(): Promise<ApiGetAuthResponse> {
+      return axios
       .get(Api.BASE_URL + '/api/auth')
       .then((res) => Api.success_from_data(res.data) as ApiGetAuthResponse)
       .catch((err) =>
-        Promise.reject<ApiResponse>(Api.fail_from_error(err, 'Unauthorized'))
+      Promise.reject<ApiResponse>(Api.fail_from_error(err, 'Unauthorized'))
       );
-  }
-
-  public authenticate(code: string): Promise<ApiAuthResponse> {
+    }
+    
+    public authenticate(code: string): Promise<ApiAuthResponse> {
     return axios
       .post(
         Api.BASE_URL + '/api/auth',
@@ -66,6 +79,63 @@ export default class Api {
           );
         this.token = res.data.token;
         return Api.success_from_data(res.data) as ApiGetAuthResponse;
+      })
+      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+  }
+
+  public registerDomains(amountOfChunks: number): Promise<ApiRegisterDomains>{
+    return axios
+      .get('/api/domains/register', {
+        params: {
+          chunksCount: amountOfChunks,
+        },
+      })
+      .then((res) => {
+        if (!res.data?.transferId || res.data?.domains)
+          return Promise.reject(
+            Api.fail_from_error(undefined, 'Failed to register Cloudfront domains')
+          );
+
+        return Api.success_from_data(res.data) as ApiRegisterDomains;
+      })
+      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+  }
+
+  public releaseDomains(domainsToRelease: Array<string>): Promise<ApiReleaseDomains>{
+    return axios
+      .get('/api/domains/release', {
+        params: {
+          domains: domainsToRelease
+        },
+      })
+      .then((res) => {
+        if (!res.data?.transferId || res.data?.domains)
+          return Promise.reject(
+            Api.fail_from_error(undefined, 'Failed to release Cloudfront domains')
+          );
+
+        return Api.success_from_data(res.data) as ApiReleaseDomains;
+      })
+      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+  }
+
+  public uploadChunk(blob: ArrayBuffer, domain: string, transferId: string, chunkId: number): Promise<ApiUploadResponse> {
+    return axios
+      .post(`https://${domain}/${transferId}/chunk/${chunkId}`, blob, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          Authorization: `Bearer ${this.token}`,
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+        responseType: 'json',
+      })
+      .then((res) => {
+        if (res.status !== 200)
+          return Promise.reject(
+            Api.fail_from_error(undefined, 'Failed to upload file ID')
+          );
+        return Api.success_from_data(res.data) as ApiUploadResponse;
       })
       .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
   }
@@ -110,7 +180,7 @@ export default class Api {
         Promise.reject(
           Api.fail_from_error(
             err,
-            err?.response?.status == 404 ? 'ID not found' : 'Failure'
+            err?.response?.status === 404 ? 'ID not found' : 'Failure'
           ) as ApiDownloadResponse
         )
       );

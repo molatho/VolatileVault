@@ -17,6 +17,7 @@ import Api, { ApiResponse } from '../utils/Api';
 import Upload from './Upload';
 import Download from './Download';
 import { enqueueSnackbar } from 'notistack';
+import UploadChunks from './UploadChunks';
 
 export default function Main() {
   const [api, setApi] = React.useState(new Api());
@@ -122,9 +123,11 @@ export default function Main() {
               >
                 <Tab label="Upload" />
                 <Tab label="Download" />
+                <Tab label="UploadChunks" />
               </Tabs>
               {tabIdx == 0 && <Upload api={api} />}
               {tabIdx == 1 && <Download api={api} />}
+              {tabIdx == 2 && <UploadChunks api={api} />}
             </CardContent>
           )}
         </Card>

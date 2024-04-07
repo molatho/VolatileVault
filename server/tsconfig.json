@@ -7,9 +7,10 @@
     "rootDir": "./src",
     "baseUrl": "./",
     "skipLibCheck": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "sourceMap": true
   },
   "include": [
     "src"
-  ]
+  ],
 }

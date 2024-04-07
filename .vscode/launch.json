@@ -7,16 +7,30 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Backend",
+            "name": "Client",
+            "runtimeArgs": [
+                "start"
+            ],
+            "runtimeExecutable": "npm",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "cwd": "${workspaceFolder}/client"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Server",
             "skipFiles": [
                 "<node_internals>\\**"
             ],
             "runtimeExecutable": "npm",
             "runtimeArgs": [
-                "run-script",
+                "run",
                 "start:nodemon"
             ], 
             "cwd": "${workspaceFolder}/server"
         }
+        
     ]
 }
