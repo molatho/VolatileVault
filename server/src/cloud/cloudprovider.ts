@@ -1,4 +1,5 @@
-interface CloudProvider {
+
+export default interface CloudProvider {
     registerDomain(domainName: string, originId: string): Promise<string>;
     createStorage(storageName: string, region: string): Promise<void>;
 

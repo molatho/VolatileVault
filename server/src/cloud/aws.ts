@@ -1,6 +1,8 @@
 const AWS = require('aws-sdk'); 
 const s3Client = new AWS.S3();
 const fs = require('fs');
+import getDistributionConfig from './aws-distribution-config';
+import CloudProvider from './cloudprovider';
 
 export class AWSCustomService implements CloudProvider{
   //variables that store the domain name and origin ID
@@ -31,56 +33,21 @@ export class AWSCustomService implements CloudProvider{
   }
 
   //make sure it the cloudfrontdomain is being returned as string
-  public async registerDomain(domainName: string/*, originId: string*/): Promise<string> { 
+  public async registerDomain(domainName: string, originId: string): Promise<string> { 
     // Distribution parameters with caching disabled 
-    const distributionConfiguration = { 
-      Aliases: { 
-        Quantity: 1, 
-        Items: [domainName] 
-      }, 
-      CallerReference: Date.now().toString(),
-      Comment: 'VolatileVault-Cloudfront-Distribution',
-      DefaultCacheBehavior: {
-        //TargetOriginId: originId,
-        ViewerProtocolPolicy: 'allow-all',
-        ForwardedValues: {
-          QueryString: false,
-          Cookies: {
-            Forward: 'none',
-          },
-        },
-        MinTTL: 0,
-        DefaultTTL: 0,
-        MaxTTL: 0,
-      },
-      Enabled: true,
-      // CacheBehaviors: [{ 
-      //   Paths: { 
-      //     Quantity: 1, 
-      //     Items: ['/*'] // All paths 
-      //   }, 
-      //   // TargetOriginId: originId, 
-      //   TrustedSigners: { 
-      //     Enabled: false // Disable for easier testing 
-      //   }, 
-      //   // Disable caching 
-      //   Caching: 'DISABLED' 
-      // }], 
-      Origins: [{ 
-        DomainName: domainName,
-        // OriginId: originId 
-      }]
-    }; 
+    const distributionConfiguration = getDistributionConfig(domainName, originId);
   
-    try { 
-      // Create CloudFront distribution 
-      const result = await this.domainsObject.createDistribution(distributionConfiguration).promise(); 
-      console.log(`CloudFront domain created without caching: ${result.Distribution.DomainName}`); 
-      return String(result.Distribution.DomainName); // Convert the domain name to a string before returning
-    } catch (error) { 
-      console.error(error); 
-      throw error; // Re-throw for handling 
-    } 
+    return new Promise<string>((resolve, reject) => {
+      this.domainsObject.createDistribution({DistributionConfig: distributionConfiguration}, function(err, data) {
+        if (err) {
+          console.error(err);
+          reject(err); // Reject the promise with the error
+        } else {
+          console.log(`CloudFront domain created without caching: ${data.Distribution.DomainName}`);
+          resolve(String(data.Distribution.DomainName)); // Resolve the promise with the domain name
+        }
+      });
+    });
   } 
 
   //create a function that creates an S3 bucket

@@ -85,7 +85,10 @@ export default class Api {
 
   public registerDomains(amountOfChunks: number): Promise<ApiRegisterDomains>{
     return axios
-      .get('/api/domains/register', {
+      .get(Api.BASE_URL + '/api/domains/register', {
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+        },
         params: {
           chunksCount: amountOfChunks,
         },
@@ -104,6 +107,9 @@ export default class Api {
   public releaseDomains(domainsToRelease: Array<string>): Promise<ApiReleaseDomains>{
     return axios
       .get('/api/domains/release', {
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+        },
         params: {
           domains: domainsToRelease
         },

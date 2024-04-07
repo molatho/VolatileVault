@@ -450,6 +450,10 @@ function ProcessUpload({
                 message: `Chunk ${i} uploaded!`,
                 variant: 'success',
               });
+              // onFinished({
+              //   id: res.transferId as string,
+              //   lifeTime: res.lifeTime as number,
+              // });
             })
             .catch((err) => {
               enqueueSnackbar({
