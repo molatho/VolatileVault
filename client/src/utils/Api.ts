@@ -26,8 +26,8 @@ export interface ApiConfigResponse extends ApiResponse {
 }
 
 export interface ApiUploadChunkResponse extends ApiResponse {
-  id?: string;
-  lifeTime?: number;
+  transferId?: string,
+  chunkId?: string,
 }
 export interface ApiRegisterDomains extends ApiResponse {
   transferId?: string;
@@ -94,7 +94,7 @@ export default class Api {
         },
       })
       .then((res) => {
-        if (!res.data?.transferId || res.data?.domains)
+        if (!res.data?.transferId || res.data?.domains.length === 0)
           return Promise.reject(
             Api.fail_from_error(undefined, 'Failed to register Cloudfront domains')
           );
@@ -104,14 +104,14 @@ export default class Api {
       .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
   }
 
-  public releaseDomains(domainsToRelease: Array<string>): Promise<ApiReleaseDomains>{
+  public releaseDomains(transferId: string): Promise<ApiReleaseDomains>{
     return axios
       .get('/api/domains/release', {
         headers: {
           Authorization: `Bearer ${this.token}`,
         },
         params: {
-          domains: domainsToRelease
+          transferId: transferId
         },
       })
       .then((res) => {
@@ -125,7 +125,47 @@ export default class Api {
       .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
   }
 
-  public uploadChunk(blob: ArrayBuffer, domain: string, transferId: string, chunkId: number): Promise<ApiUploadResponse> {
+  public waitForDomainsDeployed(transferId: string): Promise<ApiResponse> {
+    return new Promise<ApiResponse>(async (resolve, reject) => {
+      const checkStatus = async () => {
+        try {
+          const response = await this.areDistributionsReady(transferId);
+          if (response.success && response.message === 'Deployed') {
+            resolve(response as ApiUploadResponse); // Assuming the response is of type ApiUploadResponse
+          } else {
+            setTimeout(checkStatus, 10000); // Wait for 10 seconds before checking the status again
+          }
+        } catch (error) {
+          reject(error); // Reject the promise if an error occurs
+        }
+      };
+
+      checkStatus(); // Start the status check loop
+    });
+  }
+
+  public areDistributionsReady(transferId: string): Promise<ApiResponse>{
+    return axios
+      .get(Api.BASE_URL + '/api/domains/status', {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          Authorization: `Bearer ${this.token}`,
+        },
+        params: {
+          transferId: transferId
+        }
+      })
+      .then((res) => {
+        if (res.status !== 200)
+          return Promise.reject(
+            Api.fail_from_error(undefined, 'Failed to upload file ID')
+          );
+        return Api.success_from_data(res.data) as ApiUploadResponse;
+      })
+      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+  }
+
+  public uploadChunk(blob: ArrayBuffer, domain: string, transferId: string, chunkId: number): Promise<ApiUploadChunkResponse> {
     return axios
       .post(`https://${domain}/${transferId}/chunk/${chunkId}`, blob, {
         headers: {
@@ -137,7 +177,7 @@ export default class Api {
         responseType: 'json',
       })
       .then((res) => {
-        if (res.status !== 200)
+        if (res.status !== 201)
           return Promise.reject(
             Api.fail_from_error(undefined, 'Failed to upload file ID')
           );

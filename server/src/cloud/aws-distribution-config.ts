@@ -1,41 +1,3 @@
-// const distributionConfiguration = { 
-//   Aliases: { 
-//     Quantity: 1, 
-//     Items: [domainName] 
-//   }, 
-//   CallerReference: Date.now().toString(),
-//   Comment: 'VolatileVault-Cloudfront-Distribution',
-//   DefaultCacheBehavior: {
-//     //TargetOriginId: originId,
-//     ViewerProtocolPolicy: 'allow-all',
-//     ForwardedValues: {
-//       QueryString: false,
-//       Cookies: {
-//         Forward: 'none',
-//       },
-//     },
-//     MinTTL: 0,
-//     DefaultTTL: 0,
-//     MaxTTL: 0,
-//   },
-//   Enabled: true,
-//   // CacheBehaviors: [{ 
-//   //   Paths: { 
-//   //     Quantity: 1, 
-//   //     Items: ['/*'] // All paths 
-//   //   }, 
-//   //   // TargetOriginId: originId, 
-//   //   TrustedSigners: { 
-//   //     Enabled: false // Disable for easier testing 
-//   //   }, 
-//   //   // Disable caching 
-//   //   Caching: 'DISABLED' 
-//   // }], 
-//   Origins: [{ 
-//     DomainName: domainName,
-//     // OriginId: originId 
-//   }]
-// }; 
 const crypto = require('crypto');
 
 function generateRandomOriginId() {
@@ -48,13 +10,12 @@ export default function getDistributionConfig (domainName: string, originId: str
   // const randomId = generateRandomOriginId();
 
   const distributionConfiguration = {
-    "CallerReference": Date.now().toString(),
+    "CallerReference": "volatilevault-"+Date.now().toString(),
     "Comment": "VolatileVault-Cloudfront-Distribution",
     "Aliases": { 
-          "Quantity": 1, 
-          "Items": [domainName] 
+          "Quantity": 0, 
         }, 
-    "DefaultRootObject": "index.html",
+    "DefaultRootObject": "",
     "CacheBehaviors": {
       "Quantity": 0
     },
@@ -72,8 +33,10 @@ export default function getDistributionConfig (domainName: string, originId: str
         {
           "Id": originId,
           "DomainName": domainName,
-          "S3OriginConfig": {
-            "OriginAccessIdentity": ""
+          "CustomOriginConfig": {
+            "HTTPPort": 80,
+            "HTTPSPort": 443,
+            "OriginProtocolPolicy": "match-viewer",
           }
         }
       ]
@@ -82,11 +45,11 @@ export default function getDistributionConfig (domainName: string, originId: str
       "TargetOriginId": originId,
       "ViewerProtocolPolicy": "allow-all",
       "AllowedMethods": {
-        "Quantity": 2,
-        "Items": ["HEAD", "GET", "POST"],
+        "Quantity": 7,
+        "Items": ["HEAD", "DELETE", "POST", "GET", "OPTIONS", "PUT", "PATCH"],
         "CachedMethods": {
-          "Quantity": 1,
-          "Items": ["HEAD"]
+          "Quantity": 3,
+          "Items": ["HEAD", "GET", "OPTIONS"]
         }
       },
       "ForwardedValues": {

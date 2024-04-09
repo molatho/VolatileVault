@@ -418,60 +418,74 @@ function ProcessUpload({
       return;
     }
 
-    addEntry('Initializing', 'Starting...');
+    addEntry('Domains', 'Registering...');
     
     var chunks = splitArrayBuffer(tmp, Config.CHUNK_SIZE_MB);
 
-    api
-      .registerDomains(chunks.length)
+    api.registerDomains(chunks.length)
       .then((res) => {
         if (!res.domains || !res.transferId || res.domains == undefined || res.transferId == undefined)
-          return Promise.reject(
-            'Failed to register Cloudfront domains'
-          );
+          return Promise.reject('Failed to register Cloudfront domains');
 
-        addEntry('Initializing', 'Done!', 'success');
         enqueueSnackbar({
           message: 'Domains registered!',
           variant: 'success',
         });
+        addEntry('Domains', `Done: ${chunks.length} domains registered`, 'success');
 
-        //for each chunk in chunks call api.uploadChunk
-        chunks.forEach((chunk, i) => {
-          if (res.domains == undefined || res.transferId == undefined)
-            return Promise.reject('Error in domain registration, either domains or transferId is undefined');
+        addEntry('Domains', 'Deploying...');
 
-          addEntry('Upload', 'Starting...');
-          api
-            .uploadChunk(chunk, res.domains[i], res.transferId, i)
-            .then((res) => {
-              addEntry('Upload', `Chunk ${i} done!`, 'success');
+        //check the domain status before uploading
+          api.waitForDomainsDeployed(res.transferId)
+            .then((res1) => {
               enqueueSnackbar({
-                message: `Chunk ${i} uploaded!`,
+                message: 'Domains deployed!',
                 variant: 'success',
               });
-              // onFinished({
-              //   id: res.transferId as string,
-              //   lifeTime: res.lifeTime as number,
-              // });
-            })
-            .catch((err) => {
+              addEntry('Domains', 'Done: all domains deployed', 'success');
+              
+              //for each chunk in chunks call api.uploadChunk
+              chunks.forEach((chunk, i) => {
+                if (res.domains == undefined || res.transferId == undefined)
+                  return Promise.reject('Error in domain registration, either domains or transferId is undefined');
+      
+                addEntry('Upload', 'Starting...');
+                api
+                  .uploadChunk(chunk, res.domains[i], res.transferId, i)
+                  .then((res2) => {
+                    addEntry('Upload', `Chunk ${i} done!`, 'success');
+                    enqueueSnackbar({
+                      message: `Chunk ${i} uploaded!`,
+                      variant: 'success',
+                    });
+                    // onFinished({
+                    //   id: res.transferId as string,
+                    //   lifeTime: res.lifeTime as number,
+                    // });
+                  })
+                  .catch((err) => {
+                    enqueueSnackbar({
+                      message: `Upload failed: ${err?.message ?? JSON.stringify(err)}`,
+                      variant: 'error',
+                    });
+                    addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
+                  });
+              })
+            }).catch((err) => {
               enqueueSnackbar({
-                message: `Upload failed: ${err?.message ?? JSON.stringify(err)}`,
+                message: "Initialization failed: Deployment error",
                 variant: 'error',
               });
               addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
             });
-        });
-        return api.releaseDomains(res.domains);
       })
-      .catch((err: { message: any; }) => {
+      .catch((err) => {
         enqueueSnackbar({
-          message: `Initialization failed: ${err?.message ?? JSON.stringify(err)}`,
+          message: `Deployment failed: ${err?.message ?? JSON.stringify(err)}`,
           variant: 'error',
         });
         addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
-      });
+      })
 
   }, [encData, encIv]);
 
