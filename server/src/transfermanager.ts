@@ -9,7 +9,7 @@ class Transfer {
   private chunks: Map<number, Chunk> = new Map();
   private concatenatedData?: Buffer;
 
-  constructor(public transferId: string, public totalChunks: number, public creationDate: Date) {}
+  constructor(public transferId: string, public totalChunks: number, public updateAt: Date) {}
 
   addChunk(chunkIndex: number, data: Buffer): void {
     if (this.chunks.has(chunkIndex)) {
@@ -82,6 +82,20 @@ class TransferManager {
   deleteTransfer(transferId: string): boolean {
     return this.transfers.delete(transferId);
   }
+
+  removeOldTransfers(): void {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes in milliseconds
+    this.transfers.forEach((transfer, transferId) => {
+      if (transfer.updateAt < fiveMinutesAgo) {
+        this.transfers.delete(transferId);
+        console.log(`Transfer with ID ${transferId} has been removed due to age.`);
+      }
+    });
+  }
 }
+
+setInterval(() => {
+    transferManager.removeOldTransfers();
+  }, 1 * 60 * 1000); // Run every minute
 
 export const transferManager: TransferManager = new TransferManager();

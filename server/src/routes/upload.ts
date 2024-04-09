@@ -43,6 +43,8 @@ uploadRoute.post('/api/files/upload/:transferId/chunk/:chunkId', async (req: Req
   const transfer = transferManager.getTransfer(transferId)
   
   transfer.addChunk(chunkId, body);
+  transfer.updateAt = new Date();
+
   if(transfer.isComplete()){
     transfer.saveToFile()
       .then(() => {
@@ -52,7 +54,7 @@ uploadRoute.post('/api/files/upload/:transferId/chunk/:chunkId', async (req: Req
           success: true,
           message: 'File reassembled and stored',
           transferId: transferId,
-          chunkId: chunkId,
+          lifeTime: config.FILE_EXPIRY * 60,
         });
       })
       .catch(()=>{
