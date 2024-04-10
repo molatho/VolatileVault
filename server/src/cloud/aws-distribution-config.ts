@@ -1,14 +1,7 @@
 const crypto = require('crypto');
 
-function generateRandomOriginId() {
-  // Generate a random 16-byte hex string. You can change the byte size to get a different length string.
-  const randomId = crypto.randomBytes(16).toString('hex');
-  return `origin-${randomId}`;
-}
-
-export default function getDistributionConfig (domainName: string, originId: string) {
-  // const randomId = generateRandomOriginId();
-
+export default function getDistributionConfig (domainName: string, transferIdAndCount: string) {
+  //this config will require https on cloudfront but WILL ONLY CONNECT TO HTTP-SERVER
   const distributionConfiguration = {
     "CallerReference": "volatilevault-"+Date.now().toString(),
     "Comment": "VolatileVault-Cloudfront-Distribution",
@@ -31,19 +24,21 @@ export default function getDistributionConfig (domainName: string, originId: str
       "Quantity": 1,
       "Items": [
         {
-          "Id": originId,
+          "Id": transferIdAndCount,
           "DomainName": domainName,
           "CustomOriginConfig": {
-            "HTTPPort": 80,
+            "HTTPPort": 1234, //responsible for connecting to the backend servers port as we have specified http-only below
             "HTTPSPort": 443,
-            "OriginProtocolPolicy": "match-viewer",
+            "OriginProtocolPolicy": "http-only", //needs to be changed later to "https-only"
+            "OriginReadTimeout": 30,
+            "OriginKeepaliveTimeout": 5
           }
         }
       ]
     },
     "DefaultCacheBehavior": {
-      "TargetOriginId": originId,
-      "ViewerProtocolPolicy": "allow-all",
+      "TargetOriginId": transferIdAndCount,
+      "ViewerProtocolPolicy": "https-only", //is responsible for https only on cloudfront
       "AllowedMethods": {
         "Quantity": 7,
         "Items": ["HEAD", "DELETE", "POST", "GET", "OPTIONS", "PUT", "PATCH"],
@@ -66,6 +61,7 @@ export default function getDistributionConfig (domainName: string, originId: str
         "Quantity": 0
       },
       "MinTTL": 0,
+      "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad", //managed-cachingDisabled
     },
     "ViewerCertificate": {
       "CloudFrontDefaultCertificate": true

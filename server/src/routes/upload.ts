@@ -3,7 +3,7 @@ import express, { Request, Response } from 'express';
 import { Readable } from 'node:stream';
 import { FsUtils } from '../fs';
 import config from '../config';
-import { transferManager } from 'src/transfermanager';
+import { transferManager } from '../transferManager';
 
 export const uploadRoute = express.Router();
 
@@ -46,25 +46,23 @@ uploadRoute.post('/api/files/upload/:transferId/chunk/:chunkId', async (req: Req
   transfer.updateAt = new Date();
 
   if(transfer.isComplete()){
-    transfer.saveToFile()
-      .then(() => {
-        console.log(`Transfer ${transferId} saved to file.`);
-        transferManager.deleteTransfer(transferId);
-        return res.status(201).json({
-          success: true,
-          message: 'File reassembled and stored',
-          transferId: transferId,
-          lifeTime: config.FILE_EXPIRY * 60,
-        });
-      })
-      .catch(()=>{
-        console.error(`Failed to save data for transferId ${transferId}`);
+    try{
+      var file = await FsUtils.putFile(Readable.from(transfer.getConcatenatedData()));
+      console.log(`Transfer ${transferId} saved to file.`);
+      transferManager.deleteTransfer(transferId);
+      return res.status(201).json({
+        ...file,
+        message: 'File reassembled and stored',
+        transferId: transferId,
+        lifeTime: config.FILE_EXPIRY * 60,
       });
+    } catch (error){
+        return res.status(400).json({ message: error?.message ?? 'Failure' });
+    }
   }
   else{
     return res.status(201).json({
-      success: true,
-      message: 'Chunk stored',
+      message: 'Upload successful',
       transferId: transferId,
       chunkId: chunkId,
     });

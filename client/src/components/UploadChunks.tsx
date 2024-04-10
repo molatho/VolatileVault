@@ -455,7 +455,7 @@ function ProcessUpload({
                   .then((res2) => {
                     addEntry('Upload', `Chunk ${i} done!`, 'success');
                     enqueueSnackbar({
-                      message: `Chunk ${i} uploaded!`,
+                      message: `Chunk ${i}/${chunks.length} uploaded!`,
                       variant: 'success',
                     });
                     // onFinished({

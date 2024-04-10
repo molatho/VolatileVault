@@ -167,7 +167,7 @@ export default class Api {
 
   public uploadChunk(blob: ArrayBuffer, domain: string, transferId: string, chunkId: number): Promise<ApiUploadChunkResponse> {
     return axios
-      .post(`https://${domain}/${transferId}/chunk/${chunkId}`, blob, {
+      .post(`https://${domain}/api/files/upload/${transferId}/chunk/${chunkId}`, blob, {
         headers: {
           'Content-Type': 'application/octet-stream',
           Authorization: `Bearer ${this.token}`,
@@ -181,9 +181,11 @@ export default class Api {
           return Promise.reject(
             Api.fail_from_error(undefined, 'Failed to upload file ID')
           );
-        return Api.success_from_data(res.data) as ApiUploadResponse;
+        return Api.success_from_data(res.data) as ApiUploadChunkResponse;
       })
-      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+      .catch((err) => {
+        return Promise.reject<ApiUploadChunkResponse>(Api.fail_from_error(err))
+      });
   }
 
   public upload(blob: ArrayBuffer): Promise<ApiUploadResponse> {

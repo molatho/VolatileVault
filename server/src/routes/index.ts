@@ -7,6 +7,11 @@ import { domainsRoute } from './domains';
 
 export const routes = express.Router();
 
+// this is required for cloudfronts up detection
+routes.get('/', (req, res) => {
+    res.send('Volatile Vault API');
+  });
+
 routes.use(authRoute);
 routes.use(downloadRoute);
 routes.use(uploadRoute);

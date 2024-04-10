@@ -1,5 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import cron from 'node-cron';
+import { FsUtils } from './fs';
+import { Readable } from 'stream';
 
 class Chunk {
   constructor(public chunkIndex: number, public data: Buffer) {}
@@ -32,24 +35,11 @@ class Transfer {
     }
     return this.concatenatedData;
   }
-
-  saveToFile(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      const dataBuffer = this.getConcatenatedData();
-      const filePath = path.join(__dirname, 'transfers', `${this.transferId}.bin`); // Change extension as needed
-      fs.writeFile(filePath, dataBuffer, (err) => {
-        if (err) {
-          reject(`Failed to save data for transferId ${this.transferId}: ${err}`);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
 }
 
 class TransferManager {
   private transfers: Map<string, Transfer> = new Map();
+  cachedDomains: Array<string> = ["d4i8k1hm0219u.cloudfront.net", "d1y8kfijfy1afj.cloudfront.net"];
 
   createTransfer(transferId: string, totalChunks: number): Transfer {
     if (this.transfers.has(transferId)) {
@@ -68,17 +58,6 @@ class TransferManager {
     return transfer;
   }
 
-  addChunkToTransfer(transferId: string, chunkIndex: number, data: Buffer): void {
-    const transfer = this.getTransfer(transferId);
-    transfer.addChunk(chunkIndex, data);
-    if (transfer.isComplete()) {
-      transfer.saveToFile().then(() => {
-        console.log(`Transfer ${transferId} saved to file.`);
-        this.transfers.delete(transferId); // Optionally remove the transfer after saving
-      }).catch(console.error);
-    }
-  }
-
   deleteTransfer(transferId: string): boolean {
     return this.transfers.delete(transferId);
   }
@@ -94,8 +73,9 @@ class TransferManager {
   }
 }
 
-setInterval(() => {
-    transferManager.removeOldTransfers();
-  }, 1 * 60 * 1000); // Run every minute
+// Run the cleanup task every minute
+cron.schedule('* * * * *', () => {
+  transferManager.removeOldTransfers();
+});
 
 export const transferManager: TransferManager = new TransferManager();
