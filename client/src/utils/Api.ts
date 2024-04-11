@@ -140,7 +140,7 @@ export default class Api {
           case 'Deployed':
             return Api.success_from_data(response) as ApiDomainStatusResponse;
           case 'InProgress':
-            await delay(20000);
+            await delay(30000);
             break;
           default:
             return Api.fail_from_error(undefined, response.message ?? 'Failed to check status of domains');

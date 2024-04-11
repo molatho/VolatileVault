@@ -4,7 +4,7 @@ import config from '../config';
 import bodyParser from 'body-parser';
 import { AWSCustomService, DomainRegistrationResult } from '../cloud/aws';
 import { transferManager } from '../transferManager';
-import { GetDistributionCommandOutput, GetDistributionResult } from '@aws-sdk/client-cloudfront';
+import { GetDistributionResult } from '@aws-sdk/client-cloudfront';
 
 const crypto = require('crypto');
 
