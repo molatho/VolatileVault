@@ -195,13 +195,16 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
         </Table>
       </TableContainer>
       <Grid container spacing={2} sx={{ p: 2 }}>
-        <Grid item xs={4}>
+        <Grid item xs={3}>
           <Typography>{`Total: ${selectedFiles.length} files`}</Typography>
         </Grid>
-        <Grid item xs={4}>
+        <Grid item xs={3}>
           <Typography>Size: {formatSize(calcSize(selectedFiles))}</Typography>
         </Grid>
-        <Grid item xs={4}>
+        <Grid item xs={3}>
+          <Typography>Max: {formatSize(Config.CHUNK_SIZE_MB*1024*1024)}/domain</Typography>
+        </Grid>
+        <Grid item xs={3}>
           <Box display="flex" justifyContent="flex-end">
             <Button
               onClick={() => setSelectedFiles([])}
@@ -453,15 +456,15 @@ function ProcessUpload({
                 api
                   .uploadChunk(chunk, res.domains[i], res.transferId, i)
                   .then((res2) => {
-                    addEntry('Upload', `Chunk ${i} done!`, 'success');
+                    addEntry('Upload', `Chunk ${i+1}/${chunks.length} done!`, 'success');
                     enqueueSnackbar({
-                      message: `Chunk ${i}/${chunks.length} uploaded!`,
+                      message: `Chunk ${i+1}/${chunks.length} uploaded!`,
                       variant: 'success',
                     });
-                    // onFinished({
-                    //   id: res.transferId as string,
-                    //   lifeTime: res.lifeTime as number,
-                    // });
+                    onFinished({
+                      id: res2.id as string,
+                      lifeTime: res2.lifeTime as number,
+                    });
                   })
                   .catch((err) => {
                     enqueueSnackbar({

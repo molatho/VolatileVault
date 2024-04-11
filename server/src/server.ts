@@ -8,11 +8,18 @@ import cron from 'node-cron';
 import cors from 'cors';
 import config from './config';
 
+const corsOptions = {
+  origin: '*', // Erlaubt allen Domains den Zugriff
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Erlaubte Methoden
+  allowedHeaders: ['Content-Type', 'Authorization'], // Erlaubte Header
+};
+
+
 FsUtils.init();
 
 const app = express();
 
-app.use(cors());
+app.use(cors(corsOptions));
 
 app.use(bodyParser.urlencoded({ extended: false }));
 

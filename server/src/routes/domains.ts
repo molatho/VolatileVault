@@ -4,6 +4,7 @@ import config from '../config';
 import bodyParser from 'body-parser';
 import { AWSCustomService, DomainRegistrationResult } from '../cloud/aws';
 import { transferManager } from '../transferManager';
+import { GetDistributionCommandOutput, GetDistributionResult } from '@aws-sdk/client-cloudfront';
 
 const crypto = require('crypto');
 
@@ -21,61 +22,70 @@ domainsRoute.get('/api/domains', async (req: Request, res: Response) => {
   
 domainsRoute.get('/api/domains/register', async (req: Request, res: Response) => {
     const amountParam = req.query?.chunksCount as string;
-    const amount: number = amountParam ? parseInt(amountParam, 10) : null;
+    const amount: number = amountParam ? parseInt(amountParam, 10) : 0;
     const transferId = crypto.randomBytes(16).toString('hex');
 
-    if (amount === null || isNaN(amount)) return res.status(404).send();
+    if (!amount || isNaN(amount)) {
+        return res.status(400).send('Invalid amount parameter.');
+    }
     
     transferManager.createTransfer(transferId, amount);
 
     if (config.DEBUG && transferManager.cachedDomains.length >= amount) {
-        console.log("DEBUG: Using cached domains")
+        console.log("DEBUG: Using cached domains");
         return res.status(201).json({
             message: 'All domains are registered',
             transferId: transferId,
             domains: transferManager.cachedDomains.slice(0, amount),
         });
     }
+
     try {
-        let promises = [];
+        let promises: Promise<GetDistributionResult>[] = [];
         for (let i = 0; i < amount; i++) {
-            // Push the promise into the promises array
-            promises.push(cloudProvider.registerDomain(config.ORIGIN_DOMAIN, transferId+"-"+i));
+            promises.push(cloudProvider.registerDomain(config.ORIGIN_DOMAIN, `${transferId}-${i}`));
         }
 
-        // Wait for all promises to settle (either resolve or reject)
-        Promise.allSettled(promises)
-            .then((results) => {
-                var domains: DomainRegistrationResult[] = [];
-                results.forEach((result: PromiseSettledResult<DomainRegistrationResult>) => {
-                    if (result.status === 'fulfilled') {
-                        console.log(result.value);
-                        domains.push(result.value);
-                    } else if (result.status === 'rejected') {
-                        console.log(result.reason.message);
-                    }
-                });
-                if (domains.length === amount) {
-                    return res.status(201).json({
-                        message: 'All domains are registered',
-                        transferId: transferId,
-                        domains: domains,
-                    });
-                } else {
-                    for (let i = 0; i < domains.length; i++) {
-                        cloudProvider.releaseDomain(domains[i].Id);
-                    }
-                    return res.status(404).json({
-                        message: `ERROR: ${domains.length} domains were registered, therefore all domains were released.`,
-                        transferId: transferId,
-                        domains: domains,
-                    });
-                }
-        });
-    } catch (error) {
-        res.status(404).json(error);
-    };
+        const results = await Promise.allSettled(promises);
+        const domains: GetDistributionResult[] = [];
 
+        results.forEach((result) => {
+            if (result.status === 'fulfilled') {
+                console.log(`${result.value.Distribution?.Id} - ${result.value.Distribution?.DomainName}`);
+                domains.push(result.value);
+            } else if (result.status === 'rejected') {
+                console.error(result.reason);
+            }
+        });
+
+        if (domains.length === amount && domains.length > 0) {
+            //get all DomainNames from string array "domains" and store them here in a variable
+            var domainNames: string[] = domains.map(domain => domain.Distribution.DomainName ? domain.Distribution.DomainName : "");
+
+            transferManager.getTransfer(transferId).domains = domains;
+
+            return res.status(201).json({
+                message: 'All domains are registered',
+                transferId: transferId,
+                domains: domainNames,
+            });
+        } else {
+            domains.forEach((domain) => {
+                cloudProvider.releaseDomain(domain.Distribution.Id);
+            });
+            return res.status(500).json({
+                message: `ERROR: Only ${domains.length} out of ${amount} domains were registered. All domains were released.`,
+                transferId: transferId,
+                domains: domains,
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: 'An error occurred while registering domains.',
+            error: error.message || error,
+        });
+    }
 });
 
 domainsRoute.get('/api/domains/release', async (req: Request, res: Response) => {
@@ -113,18 +123,25 @@ domainsRoute.get('/api/domains/status', async (req: Request, res: Response) => {
     if (!transferId) return res.status(404).send();
     
     if (config.DEBUG)
-        return res.status(200).json({success: true,message: "Deployed",});
+        return res.status(200).json({success: true,status: "Deployed"});
     
     // Check the status of each domain
-    cloudProvider.areDistributionsReady(transferId).then(() => {
-        return res.status(200).json({
-            success: true,
-            message: "Deployed",
+    try{
+        const status = await cloudProvider.areDistributionsReady(transferId)
+        if (status === true){
+            return res.status(200).json({
+                success: true,
+                status: "Deployed",
+            });
+        } else
+            return res.status(423).json({
+                success: true,
+                status: "InProgress",
+            });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
         });
-    }).catch((error) => {
-        return res.status(200).json({
-            success: true,
-            message: error
-        });
-    });
+    };
 });

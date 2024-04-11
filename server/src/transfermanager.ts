@@ -3,6 +3,7 @@ import * as path from 'path';
 import cron from 'node-cron';
 import { FsUtils } from './fs';
 import { Readable } from 'stream';
+import { GetDistributionResult } from '@aws-sdk/client-cloudfront';
 
 class Chunk {
   constructor(public chunkIndex: number, public data: Buffer) {}
@@ -11,6 +12,7 @@ class Chunk {
 class Transfer {
   private chunks: Map<number, Chunk> = new Map();
   private concatenatedData?: Buffer;
+  domains: GetDistributionResult[] = [];
 
   constructor(public transferId: string, public totalChunks: number, public updateAt: Date) {}
 
@@ -39,7 +41,7 @@ class Transfer {
 
 class TransferManager {
   private transfers: Map<string, Transfer> = new Map();
-  cachedDomains: Array<string> = ["d4i8k1hm0219u.cloudfront.net", "d1y8kfijfy1afj.cloudfront.net"];
+  cachedDomains: Array<string> = ["d356x3rle6wof8.cloudfront.net",]; //"d4i8k1hm0219u.cloudfront.net", "d1y8kfijfy1afj.cloudfront.net"];
 
   createTransfer(transferId: string, totalChunks: number): Transfer {
     if (this.transfers.has(transferId)) {
@@ -66,8 +68,12 @@ class TransferManager {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes in milliseconds
     this.transfers.forEach((transfer, transferId) => {
       if (transfer.updateAt < fiveMinutesAgo) {
-        this.transfers.delete(transferId);
-        console.log(`Transfer with ID ${transferId} has been removed due to age.`);
+        try{
+          this.transfers.delete(transferId);
+          console.log(`Transfer with ID ${transferId} has been removed due to age.`);
+        } catch(error){ 
+          console.error(error);
+        }
       }
     });
   }

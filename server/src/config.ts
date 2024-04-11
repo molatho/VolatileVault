@@ -12,5 +12,5 @@ export default {
   AWS_SECRET: process.env.AWS_SECRET,
   AWS_REGION: process.env.AWS_REGION,
   ORIGIN_DOMAIN: process.env.ORIGIN_DOMAIN,
-  DEBUG: true,
+  DEBUG: false,
 };

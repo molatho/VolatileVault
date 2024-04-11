@@ -1,10 +1,14 @@
-const AWS = require('aws-sdk'); 
-const s3Client = new AWS.S3();
+import {CloudFront, CreateDistributionCommand, CreateDistributionRequest, DeleteDistributionCommand, DistributionConfig, GetDistributionResult, ListDistributionsCommand,} from '@aws-sdk/client-cloudfront';
+import {BucketLocationConstraint, CreateBucketCommand, PutObjectCommand, S3,} from '@aws-sdk/client-s3';
 const fs = require('fs');
+
 import { Domain } from 'domain';
 import getDistributionConfig from './aws-distribution-config';
 import CloudProvider from './cloudprovider';
-import AWS from 'aws-sdk';
+import { error } from 'console';
+
+//https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cloudfront/
+//https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/
 
 export interface DomainRegistrationResult {
   DomainName: string; // The domain name of the CloudFront distribution.
@@ -22,7 +26,7 @@ interface DistributionSummary {
   // Add other necessary properties here
 }
 
-export class AWSCustomService implements CloudProvider{
+export class AWSCustomService implements CloudProvider<any> {
   //variables that store the domain name and origin ID
   accessKeyId: string;
   secretAccessKey: string;
@@ -38,167 +42,140 @@ export class AWSCustomService implements CloudProvider{
     this.region = region;
         
     // Configure CloudFront client 
-    this.domainsObject = new AWS.CloudFront({ 
-      accessKeyId, 
-      secretAccessKey, 
-      region 
+    this.domainsObject = new CloudFront({
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+      region,
     }); 
-    this.storageObject = new AWS.S3({ 
-      accessKeyId, 
-      secretAccessKey, 
-      region 
+    this.storageObject = new S3({
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+      region,
     }); 
   }
 
   //make sure it the cloudfrontdomain is being returned as string
-  public async registerDomain(domainName: string, transferIdAndCount: string): Promise<string> { 
+  public async registerDomain(domainName: string, transferIdAndCount: string): Promise<GetDistributionResult> { 
     // Distribution parameters with caching disabled 
-    const distributionConfiguration = getDistributionConfig(domainName, transferIdAndCount);
-  
-    return new Promise<string>((resolve, reject) => {
-      this.domainsObject.createDistribution({DistributionConfig: distributionConfiguration}, function(err: AWS.AWSError, data: AWS.CloudFront.CreateDistributionResult) {
-        if (err) {
-          console.error(err);
-          reject(err); // Reject the promise with the error
-        } else {
-          console.log(`CloudFront domain created: ${data.DomainName}`);
-          resolve(data); // Resolve the promise with the domain name
-        }
-      });
-    });
+    const config: DistributionConfig = getDistributionConfig(domainName, transferIdAndCount);
+    const input: CreateDistributionRequest = { DistributionConfig: config };
+    const command = new CreateDistributionCommand(input);
+    
+    try {
+      const data: GetDistributionResult = await this.domainsObject.send(command);
+      console.log(`CloudFront domain created: ${data.Distribution?.DomainName}`);
+      return data; // Resolve the promise with the command output
+    } catch (err) {
+      console.error(err);
+      throw err; // Throw the error to be handled by the caller
+    }
   }
 
-  public async releaseDomain(id: string): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-      this.domainsObject.deleteDistribution({ Id: id }, function(err: AWS.AWSError, data: AWS.CloudFront.DeleteDistributionResult) {
-        if (err) {
-          return reject(err);
-        }
-        console.log(`CloudFront domain deleted: ${id}`);
-        resolve(data);
-      });
-    });
+  public async releaseDomain(id: string): Promise<void> {
+    const command = new DeleteDistributionCommand({ Id: id });
+    try {
+      await this.domainsObject.send(command);
+      console.log(`CloudFront domain deleted: ${id}`);
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
   }
 
   public async releaseDomains(originId: string): Promise<void> {
-    this.listDistributionsByTransferId(originId)
-      .then((distributions: DomainRegistrationResult[]) => {
-        distributions.forEach((distribution: DomainRegistrationResult) => {
-          this.domainsObject.deleteDistribution({ Id: distribution.Id })
-            .then((data) => {
-              console.log(`CloudFront domain deleted: ${distribution.DomainName}`);
-            }).catch((err) => {
-              console.error(err);
-            });
-        });
-      })
-      .catch((error) => {
-        console.error('Error releasing CloudFront domains:', error);
-      });
+    try {
+      const distributions = await this.listDistributionsByTransferId(originId);
+      for (const distribution of distributions) {
+        const command = new DeleteDistributionCommand({ Id: distribution.Id });
+        await this.domainsObject.send(command);
+        console.log(`CloudFront domain deleted: ${distribution.Id}`);
+      }
+    } catch (error) {
+      console.error('Error releasing CloudFront domains:', error);
+      throw error;
+    }
   }
 
-  //creates an S3 bucket
-  public async createStorage(bucketName: string, region: string) {
-
-    const params = { 
-      Bucket: bucketName, 
-      CreateBucketConfiguration: { 
-        LocationConstraint: region 
-      } 
-    }; 
-    try { 
-      await this.storageObject.createBucket(params).promise(); 
-      console.log(`S3 bucket created: ${bucketName}`); 
-    } catch (error) { 
-      console.error(error); 
-      throw error; 
-    } 
-  }
-
-  public async uploadFilesToS3(fileName: string, buffer: ArrayBuffer) {
-    //const fileStream = fs.createReadStream(fileName);
-    await s3Client.upload({
-      Key: fileName,
-      Body: buffer,
-    }).promise();
-  }
-
-  async listDistributionsByTransferId(transferId: string): Promise<DistributionSummary[]> {
-    return new Promise((resolve, reject) => {
-      const distributionSummaries: DistributionSummary[] = [];
-      let marker: string | undefined = undefined;
-
-      const listDistributionsRecursive = (): void => {
-        this.domainsObject.listDistributions({ Marker: marker }, (err: AWS.AWSError, response: AWS.DistributionListResponse) => {
-          if (err) {
-            console.error('Error listing CloudFront distributions:', err);
-            return reject(err);
-          }
-
-          marker = response.Marker; //or NextMarker
-
-          const filteredDistributions = response.Items?.filter(distribution => {
-            return distribution.Origins.Items.some(origin => origin.Id.includes(transferId));
-          }) || [];
-
-          distributionSummaries.push(...filteredDistributions.map(distribution => ({
-            Id: distribution.Id,
-            Status: distribution.Status as 'Deployed' | 'InProgress',
-            // Map other necessary properties here
-          })));
-
-          if (marker) {
-            listDistributionsRecursive(); // If there's a next marker, keep listing
-          } else {
-            resolve(distributionSummaries); // No more distributions to list, resolve the promise
-          }
-        });
-      };
-
-      listDistributionsRecursive(); // Start the recursive listing
+  public async createStorage(bucketName: string, region: string): Promise<void> {
+    const command = new CreateBucketCommand({
+      Bucket: bucketName,
+      CreateBucketConfiguration: { LocationConstraint: BucketLocationConstraint[region] },
     });
+  
+    try {
+      await this.storageObject.send(command);
+      console.log(`S3 bucket created: ${bucketName}`);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
-  // async listDistributionsByOriginId(originId: string): Promise<DomainRegistrationResult[]> {
-  //   const distributionSummaries: DomainRegistrationResult[] = [];
-  //   let marker: string | undefined = undefined;
-  
-  //   do {
-  //     const response = await this.domainsObject.listDistributions({ Marker: marker }).promise();
-  //     marker = response.DistributionList?.NextMarker;
-  
-  //     // Filter distributions by specific OriginId
-  //     const filteredDistributions = response.DistributionList?.Items?.filter((distribution) => {
-  //       return distribution.Origins.Items.some((origin) => origin.Id === originId);
-  //     }) || [];
-  
-  //     // Map the filtered distributions to the DistributionSummary interface
-  //     distributionSummaries.push(...filteredDistributions.map((distribution) => ({
-  //       Id: distribution.Id,
-  //       Status: distribution.Status as 'Deployed' | 'InProgress',
-  //       // Map other necessary properties here
-  //     })));
-  //   } while (marker);
-  
-  //   return distributionSummaries;
-  // }
 
-  public async areDistributionsReady(originId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.listDistributionsByTransferId(originId)
-        .then((distributions: DomainRegistrationResult[]) => {
-          distributions.forEach((distribution: DomainRegistrationResult) => {
-              console.log(`Distribution ID: ${distribution.Id} - Status: ${distribution.Status}`);
-              if (distribution.Status === 'InProgress') {
-                return reject("Still in progress.");
-              }
-          });
-          return resolve();
-        })
-        .catch((error) => {
-          console.error('Error checking CloudFront distributions status:', error);
-          return reject(error);
-        });
-      });
+  public async uploadFilesToS3(transferId: string, fileName: string, buffer: ArrayBuffer): Promise<void> {
+    //const fileStream = fs.createReadStream(fileName);
+    const command = new PutObjectCommand({
+      Bucket: transferId,
+      Key: fileName,
+      Body: new Uint8Array(buffer),
+    });
+  
+    try {
+      await this.storageObject.send(command);
+      console.log(`File uploaded: ${fileName}`);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  public async listDistributionsByTransferId(transferId: string): Promise<DistributionSummary[]> {
+    let distributionSummaries: DistributionSummary[] = [];
+    let marker: string | undefined = undefined;
+
+    while (true) {
+      const command = new ListDistributionsCommand({ Marker: marker });
+      const response = await this.domainsObject.send(command);
+
+      const filteredDistributions = response.DistributionList?.Items?.filter(distribution => {
+        return distribution.Origins.Items.some(origin => origin.Id.includes(transferId));
+      }) || [];
+
+      distributionSummaries = distributionSummaries.concat(filteredDistributions.map(distribution => ({
+        Id: distribution.Id,
+        Status: distribution.Status as 'Deployed' | 'InProgress',
+        // Map other necessary properties here
+      })));
+
+      if (response.DistributionList?.NextMarker) {
+        marker = response.DistributionList.NextMarker;
+      } else {
+        break;
+      }
+    }
+
+    return distributionSummaries;
+  }
+
+  public async areDistributionsReady(originId: string): Promise<boolean> {
+    try {
+      const distributions = await this.listDistributionsByTransferId(originId);
+      if (distributions.length === 0) throw error('No distributions found');
+      
+      for (const distribution of distributions) {
+        if (distribution.Status === 'InProgress') {
+          return false;
+        }else{
+          console.log(`Distribution ID: ${distribution.Id} -  Status: ${distribution.Status}`);
+        }
+      };
+      return true;
+    } catch (error) {
+      throw error;
+    }
   }
 
 }

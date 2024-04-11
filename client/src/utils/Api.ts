@@ -25,9 +25,12 @@ export interface ApiConfigResponse extends ApiResponse {
   fileSize?: number;
 }
 
-export interface ApiUploadChunkResponse extends ApiResponse {
+export interface ApiUploadChunkResponse extends ApiUploadResponse {
   transferId?: string,
   chunkId?: string,
+}
+export interface ApiDomainStatusResponse extends ApiResponse {
+  status?: "Deployed" | "InProgress";
 }
 export interface ApiRegisterDomains extends ApiResponse {
   transferId?: string;
@@ -125,44 +128,54 @@ export default class Api {
       .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
   }
 
-  public waitForDomainsDeployed(transferId: string): Promise<ApiResponse> {
-    return new Promise<ApiResponse>(async (resolve, reject) => {
-      const checkStatus = async () => {
-        try {
-          const response = await this.areDistributionsReady(transferId);
-          if (response.success && response.message === 'Deployed') {
-            resolve(response as ApiUploadResponse); // Assuming the response is of type ApiUploadResponse
-          } else {
-            setTimeout(checkStatus, 10000); // Wait for 10 seconds before checking the status again
-          }
-        } catch (error) {
-          reject(error); // Reject the promise if an error occurs
+  public async waitForDomainsDeployed(transferId: string): Promise<ApiResponse> {
+    const delay = async (ms: number) => {
+        return new Promise( resolve => setTimeout(resolve, ms) );
+    }
+    
+    while(true) {
+      try {
+        const response = await this.getDistributionStatus(transferId);
+        switch(response.status) {
+          case 'Deployed':
+            return Api.success_from_data(response) as ApiDomainStatusResponse;
+          case 'InProgress':
+            await delay(20000);
+            break;
+          default:
+            return Api.fail_from_error(undefined, response.message ?? 'Failed to check status of domains');
         }
-      };
-
-      checkStatus(); // Start the status check loop
-    });
+      } catch(error) {
+        return Api.fail_from_error(undefined, 'Error while checking status of domains');
+      }
+    }
   }
 
-  public areDistributionsReady(transferId: string): Promise<ApiResponse>{
+  public getDistributionStatus(transferId: string): Promise<ApiDomainStatusResponse>{
     return axios
       .get(Api.BASE_URL + '/api/domains/status', {
         headers: {
           'Content-Type': 'application/octet-stream',
-          Authorization: `Bearer ${this.token}`,
+          Authorization: `Bearer ${this.token}`
         },
         params: {
           transferId: transferId
         }
       })
       .then((res) => {
-        if (res.status !== 200)
-          return Promise.reject(
-            Api.fail_from_error(undefined, 'Failed to upload file ID')
-          );
-        return Api.success_from_data(res.data) as ApiUploadResponse;
+        if (res.status === 200)
+          return Api.success_from_data(res.data) as ApiDomainStatusResponse;
+          
+        return Promise.reject(
+          Api.fail_from_error(undefined, res.data?.message ?? 'Why you give me wrong 200 code?')
+        );
       })
-      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+      .catch((err) => {
+        if(err.response.status === 423)
+          return Api.success_from_data(err.response.data) as ApiDomainStatusResponse;
+
+        return Promise.reject<ApiResponse>(Api.fail_from_error(err, "Failed to get status of domains: getDistributionStatus"));
+      });
   }
 
   public uploadChunk(blob: ArrayBuffer, domain: string, transferId: string, chunkId: number): Promise<ApiUploadChunkResponse> {
