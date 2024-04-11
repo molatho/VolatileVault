@@ -4,6 +4,7 @@ import { Readable } from 'node:stream';
 import { FsUtils } from '../fs';
 import config from '../config';
 import { transferManager } from '../transferManager';
+import { cloudProvider } from '../cloud/aws';
 
 export const uploadRoute = express.Router();
 
@@ -49,7 +50,7 @@ uploadRoute.post('/api/files/upload/:transferId/chunk/:chunkId', async (req: Req
     try{
       var file = await FsUtils.putFile(Readable.from(transfer.getConcatenatedData()));
       console.log(`Transfer ${transferId} saved to file.`);
-      transferManager.deleteTransfer(transferId);
+
       return res.status(201).json({
         ...file,
         message: 'File reassembled and stored',
@@ -58,6 +59,9 @@ uploadRoute.post('/api/files/upload/:transferId/chunk/:chunkId', async (req: Req
       });
     } catch (error){
         return res.status(400).json({ message: error?.message ?? 'Failure' });
+    } finally {
+      transferManager.deleteTransfer(transferId);
+      cloudProvider.releaseDomains(transferId);
     }
   }
   else{

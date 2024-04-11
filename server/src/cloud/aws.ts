@@ -2,10 +2,9 @@ import {CloudFront, CreateDistributionCommand, CreateDistributionRequest, Delete
 import {BucketLocationConstraint, CreateBucketCommand, PutObjectCommand, S3,} from '@aws-sdk/client-s3';
 const fs = require('fs');
 
-import { Domain } from 'domain';
 import getDistributionConfig from './aws-distribution-config';
 import CloudProvider from './cloudprovider';
-import { error } from 'console';
+import config from '../config';
 
 //https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cloudfront/
 //https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/
@@ -86,9 +85,9 @@ export class AWSCustomService implements CloudProvider<any> {
     }
   }
 
-  public async releaseDomains(originId: string): Promise<void> {
+  public async releaseDomains(transferId: string): Promise<void> {
     try {
-      const distributions = await this.listDistributionsByTransferId(originId);
+      const distributions = await this.listDistributionsByTransferId(transferId);
       for (const distribution of distributions) {
         const command = new DeleteDistributionCommand({ Id: distribution.Id });
         await this.domainsObject.send(command);
@@ -163,8 +162,8 @@ export class AWSCustomService implements CloudProvider<any> {
   public async areDistributionsReady(originId: string): Promise<boolean> {
     try {
       const distributions = await this.listDistributionsByTransferId(originId);
-      if (distributions.length === 0) throw error('No distributions found');
-      
+      if (distributions.length === 0) throw new Error('No distributions found');
+
       for (const distribution of distributions) {
         if (distribution.Status === 'InProgress') {
           return false;
@@ -179,3 +178,5 @@ export class AWSCustomService implements CloudProvider<any> {
   }
 
 }
+
+export const cloudProvider = new AWSCustomService(config.AWS_ACCESS, config.AWS_SECRET, config.AWS_REGION);
