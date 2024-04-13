@@ -1,12 +1,14 @@
 import express from 'express';
-import { authRoute } from './auth';
-import { uploadRoute } from './upload';
-import { downloadRoute } from './download';
-import { configRoute } from './config';
+import { getAuthRoute } from './auth';
+import { getUploadRoute } from './upload';
+import { getDownloadRoute } from './download';
+import { getConfigRoute } from './config';
 
-export const routes = express.Router();
-
-routes.use(authRoute);
-routes.use(downloadRoute);
-routes.use(uploadRoute);
-routes.use(configRoute);
+export const getRoutes = () => {
+  const routes = express.Router();
+  routes.use(getAuthRoute());
+  routes.use(getDownloadRoute());
+  routes.use(getUploadRoute());
+  routes.use(getConfigRoute());
+  return routes;
+};

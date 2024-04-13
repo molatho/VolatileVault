@@ -5,7 +5,7 @@ import path from 'path';
 import ShortUniqueId from 'short-unique-id';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'node:stream';
-import config from './config';
+import { ConfigInstance } from './config/instance';
 
 export interface FileInfo {
   id: string;
@@ -72,7 +72,7 @@ export class FsUtils {
   private static db: FsDatabase = new InMemoryDatabase();
 
   private static get dir() {
-    return path.resolve(config.FS_FOLDER);
+    return path.resolve(ConfigInstance.Inst.storage.fs.folder);
   }
 
   public static async init(): Promise<void> {
