@@ -5,23 +5,21 @@ import path from 'path';
 import ShortUniqueId from 'short-unique-id';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'node:stream';
-import { ConfigInstance } from './config/instance';
+import { StorageFS } from '../config/config';
 
 export interface FileInfo {
   id: string;
   creationDate: Date;
-  path: string;
 }
 
 interface FsDatabase {
   getFiles(): Promise<FileInfo[]>;
   getFile(id: string): Promise<FileInfo>;
   removeFile(id: string): Promise<void>;
-  putFile(path: string): Promise<FileInfo>;
+  putFile(): Promise<FileInfo>;
 }
 
 const fileids = new ShortUniqueId({ length: 6, dictionary: 'alpha_upper' });
-const pathids = new ShortUniqueId({ length: 10 });
 
 class InMemoryDatabase implements FsDatabase {
   private files: FileInfo[] = [];
@@ -51,16 +49,16 @@ class InMemoryDatabase implements FsDatabase {
     }
   }
 
-  async putFile(path: string): Promise<FileInfo> {
+  async putFile(): Promise<FileInfo> {
+    const id = fileids.rnd();
     if (
-      InMemoryDatabase.firstOrDefault(this.files.filter((f) => f.path == path))
+      InMemoryDatabase.firstOrDefault(this.files.filter((f) => f.id == id))
     )
       throw `File with path "${path}" already exists!`;
 
     var _file = {
-      path: path,
-      id: fileids.rnd(),
-      creationDate: new Date(Date.now()),
+      id: id,
+      creationDate : new Date(Date.now())
     };
     this.files.push(_file);
 
@@ -69,20 +67,25 @@ class InMemoryDatabase implements FsDatabase {
 }
 
 export class FsUtils {
-  private static db: FsDatabase = new InMemoryDatabase();
+  private db: FsDatabase = new InMemoryDatabase();
+  private _cfg: StorageFS;
 
-  private static get dir() {
-    return path.resolve(ConfigInstance.Inst.storage.fs.folder);
+  public get cfg() : StorageFS { return this._cfg; }
+
+  private get dir() {
+    return path.resolve(this._cfg.folder);
   }
 
-  public static async init(): Promise<void> {
-    if (await FsUtils.exists(FsUtils.dir))
-      await fs.rm(FsUtils.dir, { recursive: true, force: true });
+  public async init(cfg: StorageFS): Promise<void> {
+    this._cfg = cfg;
+    
+    if (await this.exists(this.dir))
+      await fs.rm(this.dir, { recursive: true, force: true });
 
-    await fs.mkdir(FsUtils.dir);
+    await fs.mkdir(this.dir);
   }
 
-  private static async exists(path: string): Promise<boolean> {
+  private async exists(path: string): Promise<boolean> {
     try {
       await fs.access(path, constants.R_OK | constants.W_OK);
       return true;
@@ -91,14 +94,18 @@ export class FsUtils {
     }
   }
 
-  public static async getFiles(): Promise<FileInfo[]> {
-    return FsUtils.db.getFiles();
+  public async getFiles(): Promise<FileInfo[]> {
+    return this.db.getFiles();
   }
 
-  public static async getFile(id: string): Promise<[ReadStream, number]> {
-    const _file: FileInfo | null = await FsUtils.db.getFile(id);
-    const _path = path.join(FsUtils.dir, _file.path);
-    if (!(await FsUtils.exists(_path))) throw `File "${_path}" does not exist!`;
+  public async hasFile(id: string): Promise<boolean> {
+    return await this.exists(path.join(this.dir, id));
+  }
+
+  public async getFile(id: string): Promise<[ReadStream, number]> {
+    const _file: FileInfo | null = await this.db.getFile(id);
+    const _path = path.join(this.dir, _file.id);
+    if (!(await this.exists(_path))) throw `File "${_path}" does not exist!`;
 
     var stat = await fs.stat(_path);
     return [
@@ -107,9 +114,9 @@ export class FsUtils {
     ];
   }
 
-  public static async putFile(data: Readable): Promise<FileInfo> {
-    const file = await FsUtils.db.putFile(pathids.rnd());
-    var str = fsSync.createWriteStream(path.join(FsUtils.dir, file.path), {
+  public async putFile(data: Readable): Promise<FileInfo> {
+    const file = await this.db.putFile();
+    var str = fsSync.createWriteStream(path.join(this.dir, file.id), {
       flags: 'w',
       encoding: 'binary',
     });
@@ -117,17 +124,17 @@ export class FsUtils {
     return file;
   }
 
-  public static async removeFile(id: string): Promise<void> {
-    return await FsUtils.db.removeFile(id);
+  public async removeFile(id: string): Promise<void> {
+    return await this.db.removeFile(id);
   }
 
-  public static async cleanup(ageMs: number): Promise<void> {
+  public async cleanup(ageMs: number): Promise<void> {
     var now = new Date(Date.now());
-    for (const file of await FsUtils.db.getFiles()) {
+    for (const file of await this.db.getFiles()) {
       if (now.getTime() - file.creationDate.getTime() >= ageMs) {
-        console.log(`Removing ${file.id} (${file.path})`);
-        await fs.rm(path.join(FsUtils.dir, file.path), { force: true });
-        await FsUtils.db.removeFile(file.id);
+        console.log(`Removing ${file.id} (${file.id})`);
+        await fs.rm(path.join(this.dir, file.id), { force: true });
+        await this.db.removeFile(file.id);
       }
     }
   }

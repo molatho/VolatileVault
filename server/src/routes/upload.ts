@@ -1,7 +1,7 @@
 import bodyParser from 'body-parser';
 import express, { Request, Response } from 'express';
 import { Readable } from 'node:stream';
-import { FsUtils } from '../fs';
+import { FsUtils } from '../storage/fs';
 import { ConfigInstance } from '../config/instance';
 
 export const getUploadRoute = () => {
@@ -26,7 +26,7 @@ export const getUploadRoute = () => {
     if (!body || !body.length) return res.status(400).send();
 
     try {
-      var file = await FsUtils.putFile(Readable.from(body));
+      var file = {};//await FsUtils.putFile(Readable.from(body)); //TODO: de-couple endpoint from storage
       return res.status(201).json({
         ...file,
         message: 'Upload successful',

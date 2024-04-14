@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import { FsUtils } from '../fs';
 import bodyParser from 'body-parser';
 
 export const getDownloadRoute = () => {
@@ -18,7 +17,7 @@ export const getDownloadRoute = () => {
       if (!id) return res.status(404).send();
 
       try {
-        var [stream, length] = await FsUtils.getFile(id);
+        var [stream, length] = [null, 0];//await FsUtils.getFile(id); //TODO: de-couple endpoint from storage
 
         res.writeHead(200, {
           'Content-Type': 'application/octet-stream',
