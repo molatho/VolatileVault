@@ -4,8 +4,13 @@ import {
   StorageProvider,
   StorageProviderCapabilities,
 } from './provider';
-import { BaseExtension } from '../extensions/extension';
-import { Config } from '../config/config';
+import { BaseExtension, ExtensionInfo } from '../extensions/extension';
+import {
+  BaseExfil,
+  BaseStorage,
+  StorageFileSystem,
+  Config,
+} from '../config/config';
 import { FsUtils } from './fs';
 import { ExtensionRepository } from '../extensions/repository';
 import cron from 'node-cron';
@@ -14,12 +19,25 @@ export class FileSystemStorageProvider
   extends BaseExtension<StorageProviderCapabilities>
   implements StorageProvider
 {
-  private static NAME : string = 'filesystem';
+  get clientConfig(): ExtensionInfo {
+    return {
+      name: FileSystemStorageProvider.NAME,
+      displayName: 'Server Filesystem',
+      info: {
+        maxSize: this.config.max_size,
+        file_expiry: this.config.file_expiry,
+      },
+    };
+  }
+  private static NAME: string = 'filesystem';
   private fs: FsUtils;
 
   public constructor() {
     super(FileSystemStorageProvider.NAME, ['None']);
     this.fs = new FsUtils();
+  }
+  get config(): StorageFileSystem {
+    return this.cfg.storage.filesystem;
   }
 
   async has(id: string): Promise<boolean> {
@@ -33,8 +51,8 @@ export class FileSystemStorageProvider
   async init(cfg: Config): Promise<void> {
     this.cfg = cfg;
 
-    if (cfg.storage.fs) {
-      await this.fs.init(cfg.storage.fs);
+    if (this.config) {
+      await this.fs.init(this.config);
       console.log('FileSystemStorageProvider: initialized');
       this.register();
     } else {
@@ -45,7 +63,6 @@ export class FileSystemStorageProvider
   async store(data: StorageData): Promise<StorageInformation> {
     const info = await this.fs.putFile(data.stream);
     return {
-      storage: FileSystemStorageProvider.NAME,
       creationDate: info.creationDate,
       id: info.id,
     };
@@ -65,7 +82,7 @@ export class FileSystemStorageProvider
 
   public override installCron(): Promise<void> {
     cron.schedule('0 * * * * *', () => {
-      this.fs.cleanup(1000 * 60 * this.cfg.general.file_expiry);
+      this.fs.cleanup(1000 * 60 * this.config.file_expiry);
     });
     return Promise.resolve();
   }

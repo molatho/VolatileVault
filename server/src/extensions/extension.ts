@@ -1,14 +1,20 @@
 import { Config } from '../config/config';
 
+export interface ExtensionInfo {
+  name: string;
+  displayName: string;
+  info: object;
+}
+
 export interface Extension<CAP extends string> {
   get name(): string;
   get capabilities(): CAP[];
+  get clientConfig(): ExtensionInfo;
 
   supports(capability: CAP): boolean;
 
   init(cfg: Config): Promise<void>;
 
-  
   /**
    * Allows extensions to install their own cron jobs
    *
@@ -31,11 +37,12 @@ export abstract class BaseExtension<CAP extends string>
   private _capabilities: CAP[];
   protected cfg: Config;
 
-  
   protected constructor(name: string, capabilities: CAP[]) {
     this._name = name;
     this._capabilities = capabilities;
   }
+
+  abstract get clientConfig(): ExtensionInfo;
 
   public installCron(): Promise<void> {
     return Promise.resolve();

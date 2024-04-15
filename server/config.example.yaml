@@ -1,0 +1,15 @@
+---
+general:
+  port: 8888
+  totp_secret: '<mysecret>'
+  jwt_expiry: 60
+storage:
+  filesystem:
+    folder: './files'
+    maxSize: 104857600
+    file_expiry: 60
+exfil:
+  basichttp:
+    singleSize: 104857600
+    hosts:
+      - 'http://localhost:8888'

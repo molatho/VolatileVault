@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 import { Extension } from '../extensions/extension';
 import express from 'express';
+import { BaseExfil } from '../config/config';
 
 /**
  * Holds information about a stored item, can be extended by individual storage providers
@@ -10,8 +11,12 @@ import express from 'express';
  * @typedef {FileInformation}
  */
 export interface FileInformation {
-  exfil: string; // Name of the provider used for upload/download
   id: string; // ID of an uploaded item
+}
+
+export interface FileRetrievalInformation {
+  id?: string; // ID of an uploaded item
+  url?: string; // URL at which to download the uploaded item
 }
 
 /**
@@ -30,21 +35,16 @@ export type ExfilProviderCapabilities =
   | 'RemoveHost';
 
 /**
- * Used to register dynamic endpoint routes and communicate them to the frontend
+ * Holds a binary stream and its length
  *
  * @export
- * @interface ExfilRoutes
- * @typedef {ExfilRoutes}
+ * @interface BinaryData
+ * @typedef {BinaryData}
  */
-export interface ExfilRoutes {
-  upload?: string;
-  download?: string;
-
-  initChunkedUpload?: string;
-  uploadChunk?: string;
-
-  initChunkedDownload?: string;
-  downloadChunk?: string;
+export interface BinaryData {
+  // TODO: same as server\src\storage\provider.ts:StorageData, define single central interface instead
+  stream: Readable; // Stream to read binary contents from
+  size: number; // Length of stream
 }
 
 /**
@@ -55,10 +55,9 @@ export interface ExfilRoutes {
  * @typedef {ExfilProvider}
  */
 export interface ExfilProvider extends Extension<ExfilProviderCapabilities> {
-  get routes(): ExfilRoutes;
   get hosts(): Promise<string[]>;
-  
-  
+  get config() : BaseExfil;
+
   /**
    * Allows extensions to install their own routes
    *
@@ -67,13 +66,23 @@ export interface ExfilProvider extends Extension<ExfilProviderCapabilities> {
    */
   installRoutes(app: express.Express): Promise<void>;
 
-  has(id: string): Promise<boolean>;
+  // Simple up/downloads
+  uploadSingle(
+    storage: string,
+    data: BinaryData
+  ): Promise<FileRetrievalInformation>;
+  downloadSingle(info: FileInformation): Promise<BinaryData>;
 
-  uploadSingle(data: Readable): Promise<FileInformation>;
-  downloadSingle(info: FileInformation): Promise<Readable>;
+  // Chunked up/downloads
+  initChunkUpload(storage: string, info: any): string; // TODO: Define info type
+  initChunkDownload(info: any): string;
+  uploadChunk(
+    storage: string,
+    data: BinaryData
+  ): Promise<FileRetrievalInformation>;
+  downloadChunk(info: FileInformation): BinaryData;
 
-  initChunkUpload(info): string;
-
-  uploadMulti(data: Readable): Promise<FileInformation>;
-  downloadMulti(info: FileInformation): Readable;
+  // Hosts management
+  addHost(): Promise<string>;
+  removeHost(host: string): Promise<void>;
 }

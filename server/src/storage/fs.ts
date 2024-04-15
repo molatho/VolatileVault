@@ -5,7 +5,7 @@ import path from 'path';
 import ShortUniqueId from 'short-unique-id';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'node:stream';
-import { StorageFS } from '../config/config';
+import { StorageFileSystem } from '../config/config';
 
 export interface FileInfo {
   id: string;
@@ -68,15 +68,15 @@ class InMemoryDatabase implements FsDatabase {
 
 export class FsUtils {
   private db: FsDatabase = new InMemoryDatabase();
-  private _cfg: StorageFS;
+  private _cfg: StorageFileSystem;
 
-  public get cfg() : StorageFS { return this._cfg; }
+  public get cfg() : StorageFileSystem { return this._cfg; }
 
   private get dir() {
     return path.resolve(this._cfg.folder);
   }
 
-  public async init(cfg: StorageFS): Promise<void> {
+  public async init(cfg: StorageFileSystem): Promise<void> {
     this._cfg = cfg;
     
     if (await this.exists(this.dir))

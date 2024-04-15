@@ -7,8 +7,10 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import { FileSystemStorageProvider } from './storage/filesystem';
 import { ExtensionRepository } from './extensions/repository';
+import { BasicHTTPExfilProvider } from './exfil/basichttp';
 
 const EXTENSIONS = [
+  new BasicHTTPExfilProvider(),
   new FileSystemStorageProvider()
 ]
 
