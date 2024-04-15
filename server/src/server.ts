@@ -5,26 +5,43 @@ import { jwt } from './jwt';
 import { Request as JWTRequest, UnauthorizedError } from 'express-jwt';
 import bodyParser from 'body-parser';
 import cors from 'cors';
+import nocache from 'nocache';
 import { FileSystemStorageProvider } from './storage/filesystem';
 import { ExtensionRepository } from './extensions/repository';
 import { BasicHTTPExfilProvider } from './exfil/basichttp';
+import { Logger } from './logging';
 
 const EXTENSIONS = [
   new BasicHTTPExfilProvider(),
-  new FileSystemStorageProvider()
-]
+  new FileSystemStorageProvider(),
+];
+
+const logger = Logger.Instance.defaultLogger;
+
+logger.info("Starting up...");
 
 const main = async (): Promise<void> => {
-  console.log('Initializing config...');
+  logger.info('Initializing config...');
   await ConfigInstance.init();
 
   for (const extension of EXTENSIONS) {
-    console.log(`Initializing extension ${extension.name}...`)
+    logger.info(`Initializing extension ${extension.name}...`);
     await extension.init(ConfigInstance.Inst);
   }
 
+  if (ExtensionRepository.getInstance().exfils.length == 0)
+    throw new Error(
+      'No exfil provider was initialized: verify that at least one is configured.'
+    );
+
+  if (ExtensionRepository.getInstance().storages.length == 0)
+    throw new Error(
+      'No storage provider was initialized: verify that at least one is configured.'
+    );
+
   const app = express();
 
+  app.use(nocache());
   app.use(cors());
 
   app.use(bodyParser.urlencoded({ extended: false }));
@@ -46,7 +63,7 @@ const main = async (): Promise<void> => {
 
   app.use(getRoutes());
   for (const extension of ExtensionRepository.getInstance().exfils) {
-    console.log(`Installing routes for ${extension.name}...`)
+    logger.info(`Installing routes for ${extension.name}...`);
     await extension.installRoutes(app);
   }
 
@@ -65,8 +82,10 @@ const main = async (): Promise<void> => {
 
   const PORT = ConfigInstance.Inst.general.port || 3000;
   app.listen(PORT, () => {
-    console.log(`Application started on port ${PORT}!`);
+    logger.info(`Application started on port ${PORT}!`);
   });
 };
 
-main();
+main().catch((error) => {
+  logger.error(error.message);
+});

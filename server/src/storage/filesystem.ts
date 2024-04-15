@@ -14,6 +14,8 @@ import {
 import { FsUtils } from './fs';
 import { ExtensionRepository } from '../extensions/repository';
 import cron from 'node-cron';
+import winston from 'winston';
+import { Logger } from '../logging';
 
 export class FileSystemStorageProvider
   extends BaseExtension<StorageProviderCapabilities>
@@ -30,10 +32,12 @@ export class FileSystemStorageProvider
     };
   }
   private static NAME: string = 'filesystem';
+  private logger: winston.Logger;
   private fs: FsUtils;
 
   public constructor() {
     super(FileSystemStorageProvider.NAME, ['None']);
+    this.logger = Logger.Instance.createChildLogger('FileSystem');
     this.fs = new FsUtils();
   }
   get config(): StorageFileSystem {
@@ -53,10 +57,10 @@ export class FileSystemStorageProvider
 
     if (this.config) {
       await this.fs.init(this.config);
-      console.log('FileSystemStorageProvider: initialized');
+      this.logger.info('Initialized');
       this.register();
     } else {
-      console.log('FileSystemStorageProvider: config not set');
+      this.logger.debug('Config not set');
     }
   }
 

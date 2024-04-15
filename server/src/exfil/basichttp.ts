@@ -1,5 +1,12 @@
-import { BaseExtension, ExtensionInfo } from '../extensions/extension';
 import bodyParser from 'body-parser';
+import express, { Express, Request, Response } from 'express';
+import { Readable } from 'node:stream';
+import winston from 'winston';
+import { Config, ExfilBasicHTTP } from '../config/config';
+import { BaseExtension, ExtensionInfo } from '../extensions/extension';
+import { ExtensionRepository } from '../extensions/repository';
+import { Logger } from '../logging';
+import { StorageProvider } from '../storage/provider';
 import {
   BinaryData,
   ExfilProvider,
@@ -7,20 +14,17 @@ import {
   FileInformation,
   FileRetrievalInformation,
 } from './provider';
-import { BaseStorage, ExfilBasicHTTP, Config } from '../config/config';
-import express, { Express, Request, Response } from 'express';
-import { Readable } from 'node:stream';
-import { ExtensionRepository } from '../extensions/repository';
-import { StorageProvider } from '../storage/provider';
 
 export class BasicHTTPExfilProvider
   extends BaseExtension<ExfilProviderCapabilities>
   implements ExfilProvider
 {
   private static NAME: string = 'basichttp';
+  private logger: winston.Logger;
 
   public constructor() {
     super(BasicHTTPExfilProvider.NAME, ['DownloadSingle', 'UploadSingle']);
+    this.logger = Logger.Instance.createChildLogger('BasicHTTP');
   }
 
   get config(): ExfilBasicHTTP {
@@ -29,19 +33,19 @@ export class BasicHTTPExfilProvider
 
   get clientConfig(): ExtensionInfo {
     return {
-        name: BasicHTTPExfilProvider.NAME,
-        displayName: "Built-in HTTP",
-        info: this.config
-    }
+      name: BasicHTTPExfilProvider.NAME,
+      displayName: 'Built-in HTTP',
+      info: this.config,
+    };
   }
 
   init(cfg: Config): Promise<void> {
     this.cfg = cfg;
     if (this.config) {
-      console.log('BasicHTTPExfilProvider: initialized');
+      this.logger.info('Initialized');
       this.register();
     } else {
-      console.log('BasicHTTPExfilProvider: config not set');
+      this.logger.debug('Config not set');
     }
     return Promise.resolve();
   }
@@ -75,6 +79,8 @@ export class BasicHTTPExfilProvider
     uploadRoute.post(
       '/api/files/upload/:storage',
       async (req: Request, res: Response) => {
+        this.logger.info(`Upload request to ${req.params?.storage ?? "n/a"} from ${req.ip}`);
+
         try {
           // Validate storage param
           const storageName = req.params?.storage;
@@ -111,6 +117,8 @@ export class BasicHTTPExfilProvider
     downloadRoute.get(
       '/api/files/download/:id',
       async (req: Request, res: Response) => {
+        this.logger.info(`Download request for ${req.params?.id ?? "n/a"} from ${req.ip}`);
+
         try {
           // Validate file id param
           const id = req.params?.id;

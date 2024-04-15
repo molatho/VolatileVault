@@ -1,11 +1,12 @@
-import { ReadStream } from 'fs';
+import fsSync, { ReadStream } from 'fs';
 import fs, { constants } from 'fs/promises';
-import fsSync from 'fs';
+import { Readable } from 'node:stream';
 import path from 'path';
 import ShortUniqueId from 'short-unique-id';
 import { pipeline } from 'stream/promises';
-import { Readable } from 'node:stream';
+import winston from 'winston';
 import { StorageFileSystem } from '../config/config';
+import { Logger } from '../logging';
 
 export interface FileInfo {
   id: string;
@@ -51,14 +52,12 @@ class InMemoryDatabase implements FsDatabase {
 
   async putFile(): Promise<FileInfo> {
     const id = fileids.rnd();
-    if (
-      InMemoryDatabase.firstOrDefault(this.files.filter((f) => f.id == id))
-    )
+    if (InMemoryDatabase.firstOrDefault(this.files.filter((f) => f.id == id)))
       throw `File with path "${path}" already exists!`;
 
     var _file = {
       id: id,
-      creationDate : new Date(Date.now())
+      creationDate: new Date(Date.now()),
     };
     this.files.push(_file);
 
@@ -69,8 +68,15 @@ class InMemoryDatabase implements FsDatabase {
 export class FsUtils {
   private db: FsDatabase = new InMemoryDatabase();
   private _cfg: StorageFileSystem;
+  private logger: winston.Logger;
 
-  public get cfg() : StorageFileSystem { return this._cfg; }
+  public constructor() {
+    this.logger = Logger.Instance.createChildLogger('FileSystem');
+  }
+
+  public get cfg(): StorageFileSystem {
+    return this._cfg;
+  }
 
   private get dir() {
     return path.resolve(this._cfg.folder);
@@ -78,10 +84,12 @@ export class FsUtils {
 
   public async init(cfg: StorageFileSystem): Promise<void> {
     this._cfg = cfg;
-    
-    if (await this.exists(this.dir))
-      await fs.rm(this.dir, { recursive: true, force: true });
 
+    if (await this.exists(this.dir)) {
+      this.logger.info(`Removing ${this.dir}`);
+      await fs.rm(this.dir, { recursive: true, force: true });
+    }
+    this.logger.info(`Creating ${this.dir}`);
     await fs.mkdir(this.dir);
   }
 
@@ -132,7 +140,7 @@ export class FsUtils {
     var now = new Date(Date.now());
     for (const file of await this.db.getFiles()) {
       if (now.getTime() - file.creationDate.getTime() >= ageMs) {
-        console.log(`Removing ${file.id} (${file.id})`);
+        this.logger.info(`Removing ${file.id}`);
         await fs.rm(path.join(this.dir, file.id), { force: true });
         await this.db.removeFile(file.id);
       }

@@ -16,7 +16,8 @@
                 "run-script",
                 "start:nodemon"
             ], 
-            "cwd": "${workspaceFolder}/server"
+            "cwd": "${workspaceFolder}/server",
+            "outputCapture": "std"
         }
     ]
 }
