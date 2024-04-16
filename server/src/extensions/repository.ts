@@ -1,5 +1,5 @@
-import { ExfilProvider } from '../exfil/provider';
-import { StorageProvider } from '../storage/provider';
+import { ExfilProvider } from './exfil/provider';
+import { StorageProvider } from './storage/provider';
 
 export class ExtensionRepository {
   private static instance: ExtensionRepository | null = null;

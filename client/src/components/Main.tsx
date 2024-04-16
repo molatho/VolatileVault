@@ -3,7 +3,6 @@ import {
   CssBaseline,
   Typography,
   Container,
-  Button,
   Card,
   CardContent,
   CardMedia,
@@ -13,9 +12,9 @@ import {
   Tabs,
 } from '@mui/material';
 import React, { useEffect } from 'react';
-import Api, { ApiResponse } from '../utils/Api';
-import Upload from './Upload';
-import Download from './Download';
+import Api, { ApiConfigResponse, ApiResponse } from '../utils/Api';
+import BasicHTTPUpload from './extensions/exfil/basichttp/BasicHTTPUpload';
+import BasicHTTPDownload from './extensions/exfil/basichttp/BasicHTTPDownload';
 import { enqueueSnackbar } from 'notistack';
 
 export default function Main() {
@@ -23,6 +22,7 @@ export default function Main() {
   const [authenticated, setAuthenticated] = React.useState<boolean | undefined>(
     undefined
   );
+  const [config, setConfig] = React.useState<ApiConfigResponse|undefined>(undefined);
   const [totp, setTotp] = React.useState('');
   const [totpEditAvailable, setTotpEditAvailable] = React.useState(true);
   const [lastError, setLastError] = React.useState<string | undefined>(
@@ -60,6 +60,15 @@ export default function Main() {
           message: 'Authentication successful',
           variant: 'success',
         });
+        return api.config();
+      })
+      .then((res)=>{
+        setConfig(res)
+        setLastError(res.success ? undefined : res.message);
+        enqueueSnackbar({
+          message: 'Received configuration!',
+          variant: 'success',
+        });
       })
       .catch((err: ApiResponse) => {
         setLastError(err.message);
@@ -71,8 +80,6 @@ export default function Main() {
         enqueueSnackbar({ message: err.message, variant: 'error' });
       });
   }, [totp]);
-
-  const onAuthenticate = () => {};
 
   return (
     <React.Fragment>
@@ -113,7 +120,7 @@ export default function Main() {
               </CardContent>
             </>
           )}
-          {authenticated === true && (
+          {authenticated === true && config && (
             <CardContent>
               <Tabs
                 value={tabIdx}
@@ -123,8 +130,8 @@ export default function Main() {
                 <Tab label="Upload" />
                 <Tab label="Download" />
               </Tabs>
-              {tabIdx == 0 && <Upload api={api} />}
-              {tabIdx == 1 && <Download api={api} />}
+              {tabIdx == 0 && <BasicHTTPUpload api={api} config={config} />}
+              {tabIdx == 1 && <BasicHTTPDownload api={api} config={config} />}
             </CardContent>
           )}
         </Card>

@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream';
-import { Extension } from '../extensions/extension';
+import { Extension } from '../extension';
 import express from 'express';
-import { BaseExfil } from '../config/config';
+import { BaseExfil } from '../../config/config';
 
 /**
  * Holds information about a stored item, can be extended by individual storage providers

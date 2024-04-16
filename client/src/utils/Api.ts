@@ -22,7 +22,32 @@ export interface ApiDownloadResponse extends ApiResponse {
 }
 
 export interface ApiConfigResponse extends ApiResponse {
-  fileSize?: number;
+  storages: ApiConfigStorageCollection;
+  exfils: ApiConfigExfilsCollection;
+}
+
+export interface ApiConfigExfilsCollection {
+  basichttp?: ApiConfigItem<ApiConfigBasicHTTPExfil>;
+}
+
+export interface ApiConfigBasicHTTPExfil {
+  single_size: number;
+  hosts: string[];
+}
+
+export interface ApiConfigStorageCollection {
+  filesystem?: ApiConfigItem<ApiConfigBaseStorage>;
+}
+
+export interface ApiConfigBaseStorage {
+  max_size: number;
+  file_expiry: number;
+}
+
+export interface ApiConfigItem<T extends object> {
+  name: string;
+  displayName: string;
+  info?: T;
 }
 
 export default class Api {
@@ -43,36 +68,41 @@ export default class Api {
     return { ...data, success: true };
   }
 
-  public isAuthenticated(): Promise<ApiGetAuthResponse> {
-    return axios
-      .get(Api.BASE_URL + '/api/auth')
-      .then((res) => Api.success_from_data(res.data) as ApiGetAuthResponse)
-      .catch((err) =>
-        Promise.reject<ApiResponse>(Api.fail_from_error(err, 'Unauthorized'))
+  public async isAuthenticated(): Promise<ApiGetAuthResponse> {
+    try {
+      const res = await axios.get(Api.BASE_URL + '/api/auth');
+
+      return Api.success_from_data(res.data) as ApiGetAuthResponse;
+    } catch (error) {
+      return Promise.reject<ApiResponse>(
+        Api.fail_from_error(error, 'Unauthorized')
       );
+    }
   }
 
-  public authenticate(code: string): Promise<ApiAuthResponse> {
-    return axios
-      .post(
+  public async authenticate(code: string): Promise<ApiAuthResponse> {
+    try {
+      const res = await axios.post(
         Api.BASE_URL + '/api/auth',
         { totp: code },
         { headers: { 'content-type': 'application/json' } }
-      )
-      .then((res) => {
-        if (!res.data?.token)
-          return Promise.reject(
-            Api.fail_from_error(undefined, 'Failed to receive JWT')
-          );
-        this.token = res.data.token;
-        return Api.success_from_data(res.data) as ApiGetAuthResponse;
-      })
-      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+      );
+
+      if (!res.data?.token)
+        return Promise.reject(
+          Api.fail_from_error(undefined, 'Failed to receive JWT')
+        );
+
+      this.token = res.data.token;
+      return Api.success_from_data(res.data) as ApiGetAuthResponse;
+    } catch (error) {
+      return Promise.reject<ApiResponse>(Api.fail_from_error(error));
+    }
   }
 
-  public upload(blob: ArrayBuffer): Promise<ApiUploadResponse> {
-    return axios
-      .post(Api.BASE_URL + '/api/files/upload', blob, {
+  public async upload(blob: ArrayBuffer): Promise<ApiUploadResponse> {
+    try {
+      const res = await axios.post(Api.BASE_URL + '/api/files/upload', blob, {
         headers: {
           'Content-Type': 'application/octet-stream',
           Authorization: `Bearer ${this.token}`,
@@ -80,51 +110,60 @@ export default class Api {
         maxBodyLength: Infinity,
         maxContentLength: Infinity,
         responseType: 'json',
-      })
-      .then((res) => {
-        if (!res.data?.id)
-          return Promise.reject(
-            Api.fail_from_error(undefined, 'Failed to upload file ID')
-          );
-        return Api.success_from_data(res.data) as ApiUploadResponse;
-      })
-      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+      });
+
+      if (!res.data?.id)
+        return Promise.reject(
+          Api.fail_from_error(undefined, 'Failed to upload file ID')
+        );
+
+      return Api.success_from_data(res.data) as ApiUploadResponse;
+    } catch (error) {
+      return Promise.reject<ApiResponse>(Api.fail_from_error(error));
+    }
   }
 
-  public download(id: string): Promise<ApiDownloadResponse> {
-    return axios
-      .get(`${Api.BASE_URL}/api/files/download/${id}`, {
+  public async download(id: string): Promise<ApiDownloadResponse> {
+    try {
+      const res = await axios.get(`${Api.BASE_URL}/api/files/download/${id}`, {
         headers: {
           Authorization: `Bearer ${this.token}`,
         },
         responseType: 'arraybuffer',
-      })
-      .then((res) => {
-        if (!res.data)
-          return Promise.reject(
-            Api.fail_from_error(undefined, 'Failed to download data')
-          );
-        return Api.success_from_data({ data: res.data }) as ApiDownloadResponse;
-      })
-      .catch((err) =>
-        Promise.reject(
-          Api.fail_from_error(
-            err,
-            err?.response?.status == 404 ? 'ID not found' : 'Failure'
-          ) as ApiDownloadResponse
-        )
+      });
+
+      if (!res.data)
+        return Promise.reject(
+          Api.fail_from_error(undefined, 'Failed to download data')
+        );
+
+      return Api.success_from_data({
+        data: res.data,
+      }) as ApiDownloadResponse;
+    } catch (error) {
+      return Promise.reject(
+        Api.fail_from_error(
+          error,
+          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+        ) as ApiDownloadResponse
       );
+    }
   }
 
-  public config(): Promise<ApiConfigResponse> {
-    return axios
-      .get(Api.BASE_URL + '/api/config', {
+  public async config(): Promise<ApiConfigResponse> {
+    try {
+      const res = await axios.get(Api.BASE_URL + '/api/config', {
         headers: {
           Authorization: `Bearer ${this.token}`,
         },
         responseType: 'json',
-      })
-      .then((res) => Api.success_from_data(res.data) as ApiConfigResponse)
-      .catch((err) => Promise.reject<ApiResponse>(Api.fail_from_error(err)));
+      });
+
+      return Api.success_from_data(res.data) as ApiConfigResponse;
+    } catch (error) {
+      return Promise.reject(
+        Api.fail_from_error(error) as ApiConfigResponse
+      );
+    }
   }
 }

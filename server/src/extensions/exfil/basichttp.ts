@@ -2,10 +2,10 @@ import bodyParser from 'body-parser';
 import express, { Express, Request, Response } from 'express';
 import { Readable } from 'node:stream';
 import winston from 'winston';
-import { Config, ExfilBasicHTTP } from '../config/config';
-import { BaseExtension, ExtensionInfo } from '../extensions/extension';
-import { ExtensionRepository } from '../extensions/repository';
-import { Logger } from '../logging';
+import { Config, ExfilBasicHTTP } from '../../config/config';
+import { BaseExtension, ExtensionInfo } from '../extension';
+import { ExtensionRepository } from '../repository';
+import { Logger } from '../../logging';
 import { StorageProvider } from '../storage/provider';
 import {
   BinaryData,

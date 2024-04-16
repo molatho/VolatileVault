@@ -5,8 +5,8 @@ import path from 'path';
 import ShortUniqueId from 'short-unique-id';
 import { pipeline } from 'stream/promises';
 import winston from 'winston';
-import { StorageFileSystem } from '../config/config';
-import { Logger } from '../logging';
+import { StorageFileSystem } from '../../config/config';
+import { Logger } from '../../logging';
 
 export interface FileInfo {
   id: string;

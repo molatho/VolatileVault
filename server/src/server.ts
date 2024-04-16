@@ -6,9 +6,9 @@ import { Request as JWTRequest, UnauthorizedError } from 'express-jwt';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import nocache from 'nocache';
-import { FileSystemStorageProvider } from './storage/filesystem';
+import { FileSystemStorageProvider } from './extensions/storage/filesystem';
 import { ExtensionRepository } from './extensions/repository';
-import { BasicHTTPExfilProvider } from './exfil/basichttp';
+import { BasicHTTPExfilProvider } from './extensions/exfil/basichttp';
 import { Logger } from './logging';
 
 const EXTENSIONS = [
@@ -18,7 +18,7 @@ const EXTENSIONS = [
 
 const logger = Logger.Instance.defaultLogger;
 
-logger.info("Starting up...");
+logger.info('Starting up...');
 
 const main = async (): Promise<void> => {
   logger.info('Initializing config...');
@@ -40,6 +40,8 @@ const main = async (): Promise<void> => {
     );
 
   const app = express();
+
+  app.disable('x-powered-by');
 
   app.use(nocache());
   app.use(cors());

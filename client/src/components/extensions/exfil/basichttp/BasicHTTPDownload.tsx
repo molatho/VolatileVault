@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import Api from '../utils/Api';
-import EnterPassword from './EnterPassword';
+import Api, { ApiConfigResponse } from '../../../../utils/Api';
+import EnterPassword from '../../../EnterPassword';
 import {
   Box,
   Button,
@@ -16,8 +16,8 @@ import {
   Typography,
 } from '@mui/material';
 import { enqueueSnackbar } from 'notistack';
-import { formatSize } from '../utils/Files';
-import { decryptSymmetric } from '../utils/Crypto';
+import { formatSize } from '../../../../utils/Files';
+import { decryptSymmetric } from '../../../../utils/Crypto';
 import DownloadIcon from '@mui/icons-material/Download';
 import { saveAs } from 'file-saver';
 import jszip from 'jszip';
@@ -102,9 +102,10 @@ export function DownloadBlob({
 
 interface DownloadProps {
   api: Api;
+  config: ApiConfigResponse;
 }
 
-export default function Download({ api }: DownloadProps) {
+export default function BasicHTTPDownload({ api, config }: DownloadProps) {
   interface FileInfo {
     name: string;
     date: Date;

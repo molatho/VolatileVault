@@ -4,18 +4,18 @@ import {
   StorageProvider,
   StorageProviderCapabilities,
 } from './provider';
-import { BaseExtension, ExtensionInfo } from '../extensions/extension';
+import { BaseExtension, ExtensionInfo } from '../extension';
 import {
   BaseExfil,
   BaseStorage,
   StorageFileSystem,
   Config,
-} from '../config/config';
+} from '../../config/config';
 import { FsUtils } from './fs';
-import { ExtensionRepository } from '../extensions/repository';
+import { ExtensionRepository } from '../repository';
 import cron from 'node-cron';
 import winston from 'winston';
-import { Logger } from '../logging';
+import { Logger } from '../../logging';
 
 export class FileSystemStorageProvider
   extends BaseExtension<StorageProviderCapabilities>
@@ -26,7 +26,7 @@ export class FileSystemStorageProvider
       name: FileSystemStorageProvider.NAME,
       displayName: 'Server Filesystem',
       info: {
-        maxSize: this.config.max_size,
+        max_size: this.config.max_size,
         file_expiry: this.config.file_expiry,
       },
     };

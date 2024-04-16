@@ -24,13 +24,13 @@ import { useDropzone } from 'react-dropzone';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import jszip from 'jszip';
-import { encryptSymmetric } from '../utils/Crypto';
-import Api, { ApiConfigResponse } from '../utils/Api';
+import { encryptSymmetric } from '../../../../utils/Crypto';
+import Api, { ApiConfigResponse } from '../../../../utils/Api';
 import { enqueueSnackbar } from 'notistack';
 import moment from 'moment';
-import EnterPassword from './EnterPassword';
-import { calcSize, formatSize } from '../utils/Files';
-import { fromArrayBuffer } from '../utils/Entropy';
+import EnterPassword from '../../../EnterPassword';
+import { calcSize, formatSize } from '../../../../utils/Files';
+import { fromArrayBuffer } from '../../../../utils/Entropy';
 
 interface FileSelectionProps {
   onFilesSelected: (files: File[]) => void;
@@ -498,30 +498,17 @@ function UploadInfoElement({ info }: UploadInfoElementProps) {
 
 interface UploadProps {
   api: Api;
+  config: ApiConfigResponse;
 }
 
-export default function Upload({ api }: UploadProps) {
+export default function BasicHTTPUpload({ api, config }: UploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(0);
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null);
-  const [config, setConfig] = React.useState<ApiConfigResponse | null>(null);
+  
 
   const steps = ['Data Input', 'Process & Upload', 'Done'];
-
-  useEffect(() => {
-    api
-      .config()
-      .then((res) => setConfig(res))
-      .catch((err) =>
-        enqueueSnackbar({
-          message: `Failed to get config: ${
-            err?.message ?? JSON.stringify(err)
-          }`,
-          variant: 'error',
-        })
-      );
-  }, []);
 
   const getCurrentStepView = () => {
     switch (step) {
@@ -533,7 +520,7 @@ export default function Upload({ api }: UploadProps) {
               setPassword(_password);
               setStep(1);
             }}
-            maxFileSize={config?.fileSize}
+            maxFileSize={1}//config.storages.basichttp.fileSize}
           />
         );
       case 1:
@@ -548,7 +535,7 @@ export default function Upload({ api }: UploadProps) {
                 setUploadInfo(info);
                 setStep(2);
               }}
-              maxFileSize={config?.fileSize}
+              maxFileSize={1}//config?.fileSize}
             />
             {step == 2 && uploadInfo != null && (
               <UploadInfoElement info={uploadInfo} />

@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
-import { Extension } from '../extensions/extension';
-import {  BaseStorage } from '../config/config';
+import { Extension } from '../extension';
+import {  BaseStorage } from '../../config/config';
 
 /**
  * Holds information about an uploaded item, can be extended by individual storage providers
