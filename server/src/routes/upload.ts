@@ -1,10 +1,11 @@
 import bodyParser from 'body-parser';
 import express, { Request, Response } from 'express';
 import { Readable } from 'node:stream';
-import { FsUtils } from '../fs';
+import { FileInfo, FsUtils } from '../fs';
 import config from '../config';
 import { transferManager } from '../transferManager';
 import { cloudProvider } from '../cloud/aws';
+import ShortUniqueId from 'short-unique-id';
 
 export const uploadRoute = express.Router();
 
@@ -48,14 +49,21 @@ uploadRoute.post('/api/files/upload/:transferId/chunk/:chunkId', async (req: Req
 
   if(transfer.isComplete()){
     try{
-      var file = await FsUtils.putFile(Readable.from(transfer.getConcatenatedData()));
+      if(config.USE_CLOUDSTORAGE){
+        const fileids = new ShortUniqueId({ length: 6, dictionary: 'alpha_upper' }).rnd();
+        var file = await cloudProvider.uploadFilesToS3(transferId, fileids, transfer.getConcatenatedData());
+      }
+      else{
+        var file = await FsUtils.putFile(Readable.from(transfer.getConcatenatedData()));
+      }
+      
       console.log(`Transfer ${transferId} saved to file.`);
 
       return res.status(201).json({
         ...file,
         message: 'File reassembled and stored',
         transferId: transferId,
-        lifeTime: config.FILE_EXPIRY * 60,
+        lifeTime: config.FILE_EXPIRY * 60, //seconds * 60 = minutes
       });
     } catch (error){
         return res.status(400).json({ message: error?.message ?? 'Failure' });

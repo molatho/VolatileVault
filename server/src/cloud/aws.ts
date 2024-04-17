@@ -1,10 +1,11 @@
 import {CloudFront, CreateDistributionCommand, CreateDistributionRequest, DeleteDistributionCommand, DistributionConfig, GetDistributionResult, ListDistributionsCommand,} from '@aws-sdk/client-cloudfront';
-import {BucketLocationConstraint, CreateBucketCommand, PutObjectCommand, S3,} from '@aws-sdk/client-s3';
+import {BucketLifecycleConfiguration, BucketLocationConstraint, CreateBucketCommand, GetObjectCommand, PutBucketLifecycleConfigurationCommand, PutObjectCommand, PutObjectOutput, S3,} from '@aws-sdk/client-s3';
 const fs = require('fs');
 
 import getDistributionConfig from './aws-distribution-config';
 import CloudProvider from './cloudprovider';
 import config from '../config';
+import { FileInfo } from '../fs';
 
 //https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cloudfront/
 //https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/
@@ -99,22 +100,64 @@ export class AWSCustomService implements CloudProvider<any> {
     }
   }
 
+  /**
+   * Creates a lifecycle policy to expire the bucket after 24 hours
+   * @param transferId
+   * @returns PutBucketLifecycleConfigurationCommand
+   **/
+  public getBucketLifeTimeConfig(transferId: string): PutBucketLifecycleConfigurationCommand {
+    const currentDate = new Date();
+    currentDate.setTime(currentDate.getTime() + 24 * 60 * 60 * 1000); // add 24 hours
+    const lifecyclePolicy: BucketLifecycleConfiguration = {
+      Rules: [{
+        ID: "Expire after certain number of hours",
+        Status: "Enabled",
+        Expiration: {
+          Date: currentDate // Set the day and hour of expiration
+        }
+      }]
+    };
+    return new PutBucketLifecycleConfigurationCommand({
+      Bucket: transferId,
+      LifecycleConfiguration: lifecyclePolicy
+    });
+  }
+
+  /**
+   * Get a presigned URL for a file in a bucket
+   * @param transferId
+   * @param fileName
+   * @returns Promise<string>
+   * */
+  public async getPresignedUrl(transferId: string, fileName: string): Promise<string> {
+    const getObjectParams = {
+      Bucket: transferId, // The name of the bucket
+      Key: fileName, // The key of the object
+    };
+    const command = new GetObjectCommand(getObjectParams);
+    const url = await this.storageObject.getSignedUrl(command, { expiresIn: config.FILE_EXPIRY * 60 }); // Expire after 60 minutes
+    return url
+  }
+
   public async createStorage(bucketName: string, region: string): Promise<void> {
     const command = new CreateBucketCommand({
       Bucket: bucketName,
       CreateBucketConfiguration: { LocationConstraint: BucketLocationConstraint[region] },
     });
+    const lifecycleConfigCommand: PutBucketLifecycleConfigurationCommand = this.getBucketLifeTimeConfig(bucketName);
   
     try {
       await this.storageObject.send(command);
-      console.log(`S3 bucket created: ${bucketName}`);
+
+      await this.storageObject.send(lifecycleConfigCommand);
+      console.log(`S3 bucket created: ${bucketName} with policy to expire in ${config.FILE_EXPIRY} hours`);
     } catch (error) {
       console.error(error);
       throw error;
     }
   }
 
-  public async uploadFilesToS3(transferId: string, fileName: string, buffer: ArrayBuffer): Promise<void> {
+  public async uploadFilesToS3(transferId: string, fileName: string, buffer: ArrayBuffer): Promise<FileInfo> {
     //const fileStream = fs.createReadStream(fileName);
     const command = new PutObjectCommand({
       Bucket: transferId,
@@ -125,6 +168,9 @@ export class AWSCustomService implements CloudProvider<any> {
     try {
       await this.storageObject.send(command);
       console.log(`File uploaded: ${fileName}`);
+      const presignedUrl = await this.getPresignedUrl(transferId, fileName)
+      var file: FileInfo = {id: fileName, creationDate: new Date(Date.now()), path: presignedUrl};
+      return file;
     } catch (error) {
       console.error(error);
       throw error;

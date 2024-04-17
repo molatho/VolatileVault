@@ -402,94 +402,71 @@ function ProcessUpload({
 
   useEffect(() => {
     if (!encData || !encIv) return;
-    const data = encData as ArrayBuffer;
-    const iv = encIv as ArrayBuffer;
-    var tmp = new Uint8Array(data.byteLength + iv.byteLength);
-    tmp.set(new Uint8Array(iv), 0);
-    tmp.set(new Uint8Array(data), iv.byteLength);
-
-    if (maxFileSize && tmp.byteLength > maxFileSize) {
-      addEntry(
-        'ERROR',
-        `File size ${formatSize(
-          tmp.byteLength
-        )} exceeds the allowed maximum of ${formatSize(
-          maxFileSize
-        )}; aborting.`,
-        'error'
-      );
-      return;
-    }
-
-    addEntry('Domains', 'Registering...');
-    
-    var chunks = splitArrayBuffer(tmp, Config.CHUNK_SIZE_MB);
-
-    api.registerDomains(chunks.length)
-      .then((res) => {
-        if (!res.domains || !res.transferId || res.domains == undefined || res.transferId == undefined)
-          return Promise.reject('Failed to register Cloudfront domains');
-
+  
+    const processData = async () => {
+      try {
+        const data = encData as ArrayBuffer;
+        const iv = encIv as ArrayBuffer;
+        var tmp = new Uint8Array(data.byteLength + iv.byteLength);
+        tmp.set(new Uint8Array(iv), 0);
+        tmp.set(new Uint8Array(data), iv.byteLength);
+  
+        if (maxFileSize && tmp.byteLength > maxFileSize) {
+          addEntry('ERROR', `File size ${formatSize(tmp.byteLength)} exceeds the allowed maximum of ${formatSize(maxFileSize)}; aborting.`, 'error');
+          return;
+        }
+  
+        addEntry('Domains', 'Registering...');
+        var chunks = splitArrayBuffer(tmp, Config.CHUNK_SIZE_MB);
+  
+        const res = await api.registerDomains(chunks.length);
+        if (!res.domains || !res.transferId) {
+          throw new Error('Failed to register Cloudfront domains');
+        }
+  
         enqueueSnackbar({
           message: 'Domains registered!',
           variant: 'success',
         });
+  
         addEntry('Domains', `Done: ${chunks.length} domains registered`, 'success');
-
         addEntry('Domains', 'Deploying...');
-
-        //check the domain status before uploading
-          api.waitForDomainsDeployed(res.transferId)
-            .then((res1) => {
-              enqueueSnackbar({
-                message: 'Domains deployed!',
-                variant: 'success',
-              });
-              addEntry('Domains', 'Done: all domains deployed', 'success');
-              
-              //for each chunk in chunks call api.uploadChunk
-              chunks.forEach((chunk, i) => {
-                if (res.domains == undefined || res.transferId == undefined)
-                  return Promise.reject('Error in domain registration, either domains or transferId is undefined');
-      
-                addEntry('Upload', 'Starting...');
-                api
-                  .uploadChunk(chunk, res.domains[i], res.transferId, i)
-                  .then((res2) => {
-                    addEntry('Upload', `Chunk ${i+1}/${chunks.length} done!`, 'success');
-                    enqueueSnackbar({
-                      message: `Chunk ${i+1}/${chunks.length} uploaded!`,
-                      variant: 'success',
-                    });
-                    onFinished({
-                      id: res2.id as string,
-                      lifeTime: res2.lifeTime as number,
-                    });
-                  })
-                  .catch((err) => {
-                    enqueueSnackbar({
-                      message: `Upload failed: ${err?.message ?? JSON.stringify(err)}`,
-                      variant: 'error',
-                    });
-                    addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
-                  });
-              })
-            }).catch((err) => {
-              enqueueSnackbar({
-                message: "Initialization failed: Deployment error",
-                variant: 'error',
-              });
-              addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
-            });
-      })
-      .catch((err) => {
+  
+        await api.waitForDomainsDeployed(res.transferId);
         enqueueSnackbar({
-          message: `Deployment failed: ${err?.message ?? JSON.stringify(err)}`,
+          message: 'Domains deployed!',
+          variant: 'success',
+        });
+        addEntry('Domains', 'Done: all domains deployed', 'success');
+  
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          addEntry('Upload', 'Starting...');
+          const res2 = await api.uploadChunk(chunk, res.domains[i], res.transferId, i);
+          addEntry('Upload', `Chunk ${i + 1}/${chunks.length} done!`, 'success');
+          enqueueSnackbar({
+            message: `Chunk ${i + 1}/${chunks.length} uploaded!`,
+            variant: 'success',
+          });
+          onFinished({
+            id: res2.id as string,
+            lifeTime: res2.lifeTime as number,
+          });
+        }
+      } catch (err) {
+        const errorMessage = err && typeof err === 'object' && 'message' in err
+          ? err.message
+          : JSON.stringify(err);
+
+        enqueueSnackbar({
+          message: `Upload failed: ${errorMessage}`,
           variant: 'error',
         });
-        addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
-      })
-
+        addEntry('ERROR', errorMessage as string, 'error');
+      }
+    };
+  
+    processData();
   }, [encData, encIv]);
 
   const theme = useTheme();

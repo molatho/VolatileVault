@@ -29,6 +29,9 @@ domainsRoute.get('/api/domains/register', async (req: Request, res: Response) =>
     
     transferManager.createTransfer(transferId, amount);
 
+    if(config.USE_CLOUDSTORAGE)
+        cloudProvider.createStorage(transferId, config.AWS_REGION);
+
     if (config.DEBUG && transferManager.cachedDomains.length >= amount) {
         console.log("DEBUG: Using cached domains");
         return res.status(201).json({
