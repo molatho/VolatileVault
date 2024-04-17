@@ -167,7 +167,6 @@ export class AWSCustomService implements CloudProvider<any> {
   
     try {
       await this.storageObject.send(command);
-      console.log(`File uploaded: ${fileName}`);
       const presignedUrl = await this.getPresignedUrl(transferId, fileName)
       var file: FileInfo = {id: fileName, creationDate: new Date(Date.now()), path: presignedUrl};
       return file;

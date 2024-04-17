@@ -49,15 +49,16 @@ uploadRoute.post('/api/files/upload/:transferId/chunk/:chunkId', async (req: Req
 
   if(transfer.isComplete()){
     try{
+      var file: FileInfo;
       if(config.USE_CLOUDSTORAGE){
         const fileids = new ShortUniqueId({ length: 6, dictionary: 'alpha_upper' }).rnd();
-        var file = await cloudProvider.uploadFilesToS3(transferId, fileids, transfer.getConcatenatedData());
+        file = await cloudProvider.uploadFilesToS3(transferId, fileids, transfer.getConcatenatedData());
+        console.log(`Transfer ${transferId} saved to s3.`);
       }
       else{
-        var file = await FsUtils.putFile(Readable.from(transfer.getConcatenatedData()));
+        file = await FsUtils.putFile(Readable.from(transfer.getConcatenatedData()));
+        console.log(`Transfer ${transferId} saved to file.`);
       }
-      
-      console.log(`Transfer ${transferId} saved to file.`);
 
       return res.status(201).json({
         ...file,
