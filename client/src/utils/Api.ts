@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { Axios, AxiosRequestConfig } from 'axios';
 import Config from './Config';
 
 export interface ApiResponse {
@@ -30,8 +30,12 @@ export interface ApiConfigExfilsCollection {
   basichttp?: ApiConfigItem<ApiConfigBasicHTTPExfil>;
 }
 
-export interface ApiConfigBasicHTTPExfil {
-  single_size: number;
+export interface ApiConfigBaseExfil {
+  single_size?: number;
+  chunk_size?: number;
+}
+
+export interface ApiConfigBasicHTTPExfil extends ApiConfigBaseExfil {
   hosts: string[];
 }
 
@@ -52,9 +56,9 @@ export interface ApiConfigItem<T extends object> {
 
 export default class Api {
   public token?: string = undefined;
-  private static BASE_URL: string = Config.BASE_URL;
+  public static BASE_URL: string = Config.BASE_URL;
 
-  private static fail_from_error(
+  public static fail_from_error(
     error: any,
     defaultMessage: string = 'Failure'
   ): ApiResponse {
@@ -64,7 +68,7 @@ export default class Api {
     };
   }
 
-  private static success_from_data(data: any): ApiResponse {
+  public static success_from_data(data: any): ApiResponse {
     return { ...data, success: true };
   }
 
@@ -161,9 +165,7 @@ export default class Api {
 
       return Api.success_from_data(res.data) as ApiConfigResponse;
     } catch (error) {
-      return Promise.reject(
-        Api.fail_from_error(error) as ApiConfigResponse
-      );
+      return Promise.reject(Api.fail_from_error(error) as ApiConfigResponse);
     }
   }
 }

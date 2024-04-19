@@ -16,13 +16,16 @@ import Api, { ApiConfigResponse, ApiResponse } from '../utils/Api';
 import BasicHTTPUpload from './extensions/exfil/basichttp/BasicHTTPUpload';
 import BasicHTTPDownload from './extensions/exfil/basichttp/BasicHTTPDownload';
 import { enqueueSnackbar } from 'notistack';
+import { EXFILS, ExfilExtension } from './extensions/extension';
 
 export default function Main() {
-  const [api, setApi] = React.useState(new Api());
+  const [api, _] = React.useState(new Api());
   const [authenticated, setAuthenticated] = React.useState<boolean | undefined>(
     undefined
   );
-  const [config, setConfig] = React.useState<ApiConfigResponse|undefined>(undefined);
+  const [config, setConfig] = React.useState<ApiConfigResponse | undefined>(
+    undefined
+  );
   const [totp, setTotp] = React.useState('');
   const [totpEditAvailable, setTotpEditAvailable] = React.useState(true);
   const [lastError, setLastError] = React.useState<string | undefined>(
@@ -62,8 +65,8 @@ export default function Main() {
         });
         return api.config();
       })
-      .then((res)=>{
-        setConfig(res)
+      .then((res) => {
+        setConfig(res);
         setLastError(res.success ? undefined : res.message);
         enqueueSnackbar({
           message: 'Received configuration!',
@@ -80,6 +83,37 @@ export default function Main() {
         enqueueSnackbar({ message: err.message, variant: 'error' });
       });
   }, [totp]);
+
+  const exfils: ExfilExtension[] = config
+    ? EXFILS.filter((e) => e.isPresent(config))
+    : [];
+
+  const tabs = [
+    {
+      displayName: 'Upload single',
+      exfils: exfils.filter(
+        (e) => e.capabilities.indexOf('UploadSingle') !== -1
+      ),
+    },
+    {
+      displayName: 'Download single',
+      exfils: exfils.filter(
+        (e) => e.capabilities.indexOf('DownloadSingle') !== -1
+      ),
+    },
+    {
+      displayName: 'Upload chunked',
+      exfils: exfils.filter(
+        (e) => e.capabilities.indexOf('UploadChunked') !== -1
+      ),
+    },
+    {
+      displayName: 'Download chunked',
+      exfils: exfils.filter(
+        (e) => e.capabilities.indexOf('DownloadChunked') !== -1
+      ),
+    },
+  ].filter((t) => t.exfils.length > 0);
 
   return (
     <React.Fragment>
@@ -127,9 +161,12 @@ export default function Main() {
                 onChange={(_, idx) => setTabIdx(idx)}
                 aria-label="basic tabs example"
               >
-                <Tab label="Upload" />
-                <Tab label="Download" />
+                {tabs.map((t, i) => (
+                  <Tab key={i} label={t.displayName} />
+                ))}
               </Tabs>
+                {tabIdx >= 0 && tabIdx < tabs.length ? tabs[]}
+
               {tabIdx == 0 && <BasicHTTPUpload api={api} config={config} />}
               {tabIdx == 1 && <BasicHTTPDownload api={api} config={config} />}
             </CardContent>

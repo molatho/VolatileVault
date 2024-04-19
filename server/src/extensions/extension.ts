@@ -2,7 +2,7 @@ import { Config } from '../config/config';
 
 export interface ExtensionInfo {
   name: string;
-  displayName: string; //TODO: Add capabilities!
+  displayName: string;
   info: object;
 }
 
