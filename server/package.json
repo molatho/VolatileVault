@@ -12,9 +12,11 @@
   "author": "Peter Coles",
   "license": "MIT",
   "dependencies": {
-    "@aws-sdk/client-cloudfront": "^3.552.0",
-    "@aws-sdk/client-s3": "^3.552.0",
+    "@aws-sdk/client-cloudfront": "^3.556.0",
+    "@aws-sdk/client-s3": "^3.556.0",
+    "@aws-sdk/s3-request-presigner": "^3.556.0",
     "@types/node-cron": "^3.0.11",
+    "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",

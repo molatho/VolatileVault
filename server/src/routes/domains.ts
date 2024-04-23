@@ -21,13 +21,12 @@ domainsRoute.get('/api/domains', async (req: Request, res: Response) => {
 domainsRoute.get('/api/domains/register', async (req: Request, res: Response) => {
     const amountParam = req.query?.chunksCount as string;
     const amount: number = amountParam ? parseInt(amountParam, 10) : 0;
-    const transferId = crypto.randomBytes(16).toString('hex');
-
+    
     if (!amount || isNaN(amount)) {
         return res.status(400).send('Invalid amount parameter.');
     }
     
-    transferManager.createTransfer(transferId, amount);
+    const transferId = await transferManager.createTransfer(amount);
 
     if(config.USE_CLOUDSTORAGE)
         cloudProvider.createStorage(transferId, config.AWS_REGION);

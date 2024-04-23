@@ -70,7 +70,6 @@ uploadRoute.post('/api/files/upload/:transferId/chunk/:chunkId', async (req: Req
         return res.status(400).json({ message: error?.message ?? 'Failure' });
     } finally {
       transferManager.deleteTransfer(transferId);
-      cloudProvider.releaseDomains(transferId);
     }
   }
   else{

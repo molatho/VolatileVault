@@ -1,6 +1,6 @@
 import {CloudFront, CreateDistributionCommand, CreateDistributionRequest, DeleteDistributionCommand, DistributionConfig, GetDistributionResult, ListDistributionsCommand,} from '@aws-sdk/client-cloudfront';
-import {BucketLifecycleConfiguration, BucketLocationConstraint, CreateBucketCommand, GetObjectCommand, PutBucketLifecycleConfigurationCommand, PutObjectCommand, PutObjectOutput, S3,} from '@aws-sdk/client-s3';
-const fs = require('fs');
+import {BucketLifecycleConfiguration, BucketLocationConstraint, CreateBucketCommand, CreateBucketCommandOutput, ExpirationStatus, GetObjectCommand, PutBucketLifecycleConfigurationCommand, PutBucketLifecycleConfigurationCommandOutput, PutObjectCommand, PutObjectOutput, S3,} from '@aws-sdk/client-s3';
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import getDistributionConfig from './aws-distribution-config';
 import CloudProvider from './cloudprovider';
@@ -47,6 +47,7 @@ export class AWSCustomService implements CloudProvider<any> {
         accessKeyId,
         secretAccessKey,
       },
+      apiVersion: 'latest',
       region,
     }); 
     this.storageObject = new S3({
@@ -54,6 +55,7 @@ export class AWSCustomService implements CloudProvider<any> {
         accessKeyId,
         secretAccessKey,
       },
+      apiVersion: 'latest',
       region,
     }); 
   }
@@ -102,25 +104,34 @@ export class AWSCustomService implements CloudProvider<any> {
 
   /**
    * Creates a lifecycle policy to expire the bucket after 24 hours
-   * @param transferId
+   * @param bucketName
    * @returns PutBucketLifecycleConfigurationCommand
    **/
-  public getBucketLifeTimeConfig(transferId: string): PutBucketLifecycleConfigurationCommand {
-    const currentDate = new Date();
-    currentDate.setTime(currentDate.getTime() + 24 * 60 * 60 * 1000); // add 24 hours
-    const lifecyclePolicy: BucketLifecycleConfiguration = {
-      Rules: [{
-        ID: "Expire after certain number of hours",
-        Status: "Enabled",
-        Expiration: {
-          Date: currentDate // Set the day and hour of expiration
-        }
-      }]
+  public getBucketLifeTimeConfig(bucketName: string) {
+    const now = new Date();
+    now.setTime(now.getTime() + 24 * 60 * 60 * 1000); // add 24 hours
+    const midnightUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+    const input = {
+      "Bucket": bucketName,
+      "LifecycleConfiguration": {
+        "Rules": [
+          {
+            "Expiration": {
+              "Date": midnightUtc
+            },
+            "Filter": {
+              "Prefix": ""
+            },
+            "ID": bucketName,
+            "Status": ExpirationStatus.Enabled,
+            "AbortIncompleteMultipartUpload": {
+              "DaysAfterInitiation": 1 // Abort incomplete uploads after 1 day 
+            }
+          }
+        ]
+      }
     };
-    return new PutBucketLifecycleConfigurationCommand({
-      Bucket: transferId,
-      LifecycleConfiguration: lifecyclePolicy
-    });
+    return new PutBucketLifecycleConfigurationCommand(input);
   }
 
   /**
@@ -135,7 +146,7 @@ export class AWSCustomService implements CloudProvider<any> {
       Key: fileName, // The key of the object
     };
     const command = new GetObjectCommand(getObjectParams);
-    const url = await this.storageObject.getSignedUrl(command, { expiresIn: config.FILE_EXPIRY * 60 }); // Expire after 60 minutes
+    const url = await getSignedUrl(this.storageObject, command, { expiresIn: config.FILE_EXPIRY * 60 }); // Expire after 60 minutes
     return url
   }
 
@@ -147,11 +158,14 @@ export class AWSCustomService implements CloudProvider<any> {
     const lifecycleConfigCommand: PutBucketLifecycleConfigurationCommand = this.getBucketLifeTimeConfig(bucketName);
   
     try {
-      await this.storageObject.send(command);
+      const out: CreateBucketCommandOutput = await this.storageObject.send(command);
+      const out1: PutBucketLifecycleConfigurationCommandOutput = await this.storageObject.send(lifecycleConfigCommand);
 
-      await this.storageObject.send(lifecycleConfigCommand);
       console.log(`S3 bucket created: ${bucketName} with policy to expire in ${config.FILE_EXPIRY} hours`);
     } catch (error) {
+      if (error.Code === "BucketAlreadyOwnedByYou")
+        return;
+
       console.error(error);
       throw error;
     }

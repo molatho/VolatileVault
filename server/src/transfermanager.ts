@@ -1,9 +1,8 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import cron from 'node-cron';
-import { FsUtils } from './fs';
-import { Readable } from 'stream';
+import { createHash } from 'crypto';
 import { GetDistributionResult } from '@aws-sdk/client-cloudfront';
+import config from './config';
+import { cloudProvider } from './cloud/aws';
 
 class Chunk {
   constructor(public chunkIndex: number, public data: Buffer) {}
@@ -43,13 +42,21 @@ class TransferManager {
   private transfers: Map<string, Transfer> = new Map();
   cachedDomains: Array<string> = ["d356x3rle6wof8.cloudfront.net",]; //"d4i8k1hm0219u.cloudfront.net", "d1y8kfijfy1afj.cloudfront.net"];
 
-  createTransfer(transferId: string, totalChunks: number): Transfer {
+  private generateTransferId(): string {
+    const hash = createHash('sha512');
+    hash.update(config.TOTP_SECRET);
+    const hashDigest = hash.digest('hex');
+    return hashDigest.slice(0, 20);
+  }
+
+  async createTransfer(totalChunks: number): Promise<string> {
+    const transferId = this.generateTransferId();
     if (this.transfers.has(transferId)) {
       throw new Error(`Transfer with ID ${transferId} already exists.`);
     }
     const transfer = new Transfer(transferId, totalChunks, new Date());
     this.transfers.set(transferId, transfer);
-    return transfer;
+    return transferId;
   }
 
   getTransfer(transferId: string): Transfer {
@@ -61,6 +68,7 @@ class TransferManager {
   }
 
   deleteTransfer(transferId: string): boolean {
+    cloudProvider.releaseDomains(transferId);
     return this.transfers.delete(transferId);
   }
 
@@ -69,6 +77,9 @@ class TransferManager {
     this.transfers.forEach((transfer, transferId) => {
       if (transfer.updateAt < fiveMinutesAgo) {
         try{
+          this.transfers.get(transferId)?.domains.forEach((domain) => {
+            cloudProvider.releaseDomain(domain.Distribution.Id);
+          });
           this.transfers.delete(transferId);
           console.log(`Transfer with ID ${transferId} has been removed due to age.`);
         } catch(error){ 
