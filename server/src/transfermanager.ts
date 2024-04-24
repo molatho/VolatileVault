@@ -11,6 +11,7 @@ class Chunk {
 class Transfer {
   private chunks: Map<number, Chunk> = new Map();
   private concatenatedData?: Buffer;
+  downloadUrl: string = '';
   domains: GetDistributionResult[] = [];
 
   constructor(public transferId: string, public totalChunks: number, public updateAt: Date) {}
@@ -40,6 +41,7 @@ class Transfer {
 
 class TransferManager {
   private transfers: Map<string, Transfer> = new Map();
+  fileStorage: Map<string, string> = new Map();
   cachedDomains: Array<string> = ["d356x3rle6wof8.cloudfront.net",]; //"d4i8k1hm0219u.cloudfront.net", "d1y8kfijfy1afj.cloudfront.net"];
 
   private generateTransferId(): string {

@@ -51,8 +51,11 @@ uploadRoute.post('/api/files/upload/:transferId/chunk/:chunkId', async (req: Req
     try{
       var file: FileInfo;
       if(config.USE_CLOUDSTORAGE){
-        const fileids = new ShortUniqueId({ length: 6, dictionary: 'alpha_upper' }).rnd();
-        file = await cloudProvider.uploadFilesToS3(transferId, fileids, transfer.getConcatenatedData());
+        const fileId = new ShortUniqueId({ length: 6, dictionary: 'alpha_upper' }).rnd();
+        
+        file = await cloudProvider.uploadFilesToS3(transferId, fileId, transfer.getConcatenatedData());
+        
+        transferManager.fileStorage.set(fileId, file.path); //store file id with presignedUrl
         console.log(`Transfer ${transferId} saved to s3.`);
       }
       else{

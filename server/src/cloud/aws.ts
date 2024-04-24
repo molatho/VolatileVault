@@ -1,4 +1,4 @@
-import {CloudFront, CreateDistributionCommand, CreateDistributionRequest, DeleteDistributionCommand, DistributionConfig, GetDistributionResult, ListDistributionsCommand,} from '@aws-sdk/client-cloudfront';
+import {CloudFront, CreateDistributionCommand, CreateDistributionRequest, DeleteDistributionCommand, DistributionConfig, GetDistributionCommand, GetDistributionConfigCommand, GetDistributionResult, ListDistributionsCommand, UpdateDistributionCommand,} from '@aws-sdk/client-cloudfront';
 import {BucketLifecycleConfiguration, BucketLocationConstraint, CreateBucketCommand, CreateBucketCommandOutput, ExpirationStatus, GetObjectCommand, PutBucketLifecycleConfigurationCommand, PutBucketLifecycleConfigurationCommandOutput, PutObjectCommand, PutObjectOutput, S3,} from '@aws-sdk/client-s3';
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -78,23 +78,65 @@ export class AWSCustomService implements CloudProvider<any> {
   }
 
   public async releaseDomain(id: string): Promise<void> {
-    const command = new DeleteDistributionCommand({ Id: id });
-    try {
-      await this.domainsObject.send(command);
-      console.log(`CloudFront domain deleted: ${id}`);
-    } catch (err) {
-      console.error(err);
-      throw err;
+    // Get the current distribution config
+    const getDistCommand = new GetDistributionCommand({ Id: id });
+    const getDistResponse = await this.domainsObject.send(getDistCommand);
+
+    if (getDistResponse.Distribution.DistributionConfig.Enabled) {
+      // Update the distribution to disable it
+      const updateDistCommand = new UpdateDistributionCommand({
+        Id: id,
+        IfMatch: getDistResponse.ETag, // Use the ETag from the get operation
+        DistributionConfig: {
+          ...getDistResponse.Distribution.DistributionConfig,
+          Enabled: false, // Disable the distribution
+        },
+      });
+      await this.domainsObject.send(updateDistCommand);
+      console.log(`CloudFront distribution disabled: ${id}`);
     }
+
+    // Wait until the distribution is fully disabled and the status is 'Deployed'
+    const latestEtag = await this.waitForDistributionDeployed(id, getDistResponse.ETag);
+
+    // Once disabled, delete the distribution
+    const deleteCommand = new DeleteDistributionCommand({
+      Id: id,
+      IfMatch: latestEtag, // Use the latest ETag from the waitForDistributionDeployed function
+    });
+    await this.domainsObject.send(deleteCommand);
+    console.log(`CloudFront distribution deleted: ${id}`);
   }
 
+  private async waitForDistributionDeployed(distributionId: string, etag: string): Promise<string> {
+    // Helper function to wait for a specified number of milliseconds
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  
+    let status = '';
+    do {
+      // Wait for a short period before checking the status again to avoid excessive requests
+      await delay(30000); // 30 seconds
+  
+      // Retrieve the distribution information
+      const command = new GetDistributionCommand({ Id: distributionId });
+      const response = await this.domainsObject.send(command);
+      status = response.Distribution.Status;
+  
+      // Check if the ETag has changed and use the latest one
+      if (response.ETag !== etag) {
+        etag = response.ETag;
+      }
+    } while (status !== 'Deployed');
+  
+    // Make sure to return the latest ETag to use for the delete operation
+    return etag;
+  }
+  
   public async releaseDomains(transferId: string): Promise<void> {
     try {
       const distributions = await this.listDistributionsByTransferId(transferId);
       for (const distribution of distributions) {
-        const command = new DeleteDistributionCommand({ Id: distribution.Id });
-        await this.domainsObject.send(command);
-        console.log(`CloudFront domain deleted: ${distribution.Id}`);
+        this.releaseDomain(distribution.Id);
       }
     } catch (error) {
       console.error('Error releasing CloudFront domains:', error);
@@ -227,7 +269,7 @@ export class AWSCustomService implements CloudProvider<any> {
         if (distribution.Status === 'InProgress') {
           return false;
         }else{
-          console.log(`Distribution ID: ${distribution.Id} -  Status: ${distribution.Status}`);
+          //console.log(`Distribution ID: ${distribution.Id} -  Status: ${distribution.Status}`);
         }
       };
       return true;
