@@ -109,6 +109,7 @@ export default function Main() {
                     inputProps={{ maxLength: 6 }}
                     onChange={onTotpChange}
                     error={lastError !== undefined}
+                    autoComplete='one-time-code'
                   />
                 </Stack>
               </CardContent>
