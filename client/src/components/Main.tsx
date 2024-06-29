@@ -7,113 +7,63 @@ import {
   CardContent,
   CardMedia,
   Stack,
-  TextField,
-  Tab,
-  Tabs,
+  Stepper,
+  StepLabel,
+  Step,
+  StepContent,
 } from '@mui/material';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Api, { ApiConfigResponse, ApiResponse } from '../utils/Api';
-import BasicHTTPUpload from './extensions/exfil/basichttp/BasicHTTPUpload';
-import BasicHTTPDownload from './extensions/exfil/basichttp/BasicHTTPDownload';
-import { enqueueSnackbar } from 'notistack';
-import { EXFILS, ExfilExtension } from './extensions/extension';
+import Authentication from './Authentication';
+import { snackError } from '../utils/Snack';
+import ModeSelector, { SelectedMode } from './ModeSelector';
+import { ExfilExtension } from './extensions/Extension';
+import { initializeExfilExtensions } from './extensions/ExtensionManager';
+import BasicSelector from './BasicSelector';
 
 export default function Main() {
-  const [api, _] = React.useState(new Api());
-  const [authenticated, setAuthenticated] = React.useState<boolean | undefined>(
+  const [api, _] = useState(new Api());
+  const [authenticated, setAuthenticated] = useState<boolean>(false);
+  const [config, setConfig] = useState<ApiConfigResponse | undefined>(
     undefined
   );
-  const [config, setConfig] = React.useState<ApiConfigResponse | undefined>(
-    undefined
+  const [tabIdx, setTabIdx] = useState(0);
+  const [mode, setMode] = useState<SelectedMode>('None');
+  const [exfils, setExfils] = useState<ExfilExtension[]>([]);
+  const [selectedExfil, setSelectedExfil] = useState<ExfilExtension | null>(
+    null
   );
-  const [totp, setTotp] = React.useState('');
-  const [totpEditAvailable, setTotpEditAvailable] = React.useState(true);
-  const [lastError, setLastError] = React.useState<string | undefined>(
-    undefined
-  );
-  const [tabIdx, setTabIdx] = React.useState(0);
-
-  React.useEffect(() => {
-    api
-      .isAuthenticated()
-      .then((res) => setAuthenticated(res.success))
-      .catch((err) => {
-        enqueueSnackbar({
-          message: 'You need to authenticate',
-          variant: 'info',
-        });
-        setAuthenticated(false);
-      });
-  }, []);
-
-  const onTotpChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setTotp(event.target.value);
-  };
+  const [step, setStep] = useState(0);
 
   useEffect(() => {
-    if (totp.length !== 6) return;
-    setLastError(undefined);
-    setTotpEditAvailable(false);
-    api
-      .authenticate(totp)
-      .then((res) => {
-        setAuthenticated(res.success);
-        setLastError(res.success ? undefined : res.message);
-        enqueueSnackbar({
-          message: 'Authentication successful',
-          variant: 'success',
-        });
-        return api.config();
-      })
-      .then((res) => {
+    async function getConfig() {
+      try {
+        const res = await api.config();
         setConfig(res);
-        setLastError(res.success ? undefined : res.message);
-        enqueueSnackbar({
-          message: 'Received configuration!',
-          variant: 'success',
-        });
-      })
-      .catch((err: ApiResponse) => {
-        setLastError(err.message);
-        setTimeout(() => {
-          setLastError(undefined);
-          setTotpEditAvailable(true);
-          setTotp('');
-        }, 1000);
-        enqueueSnackbar({ message: err.message, variant: 'error' });
-      });
-  }, [totp]);
+      } catch (error) {
+        const err = error as ApiResponse;
+        snackError(`Failed querying config: ${err.message}`);
+        setAuthenticated(false);
+      }
+    }
+    if (authenticated) getConfig();
+  }, [authenticated]);
 
-  const exfils: ExfilExtension[] = config
-    ? EXFILS.filter((e) => e.isPresent(config))
-    : [];
+  useEffect(() => {
+    if (!config) return;
+    setExfils(
+      initializeExfilExtensions(api, config).filter((e) => e.isPresent())
+    );
+  }, [config]);
 
-  const tabs = [
-    {
-      displayName: 'Upload single',
-      exfils: exfils.filter(
-        (e) => e.capabilities.indexOf('UploadSingle') !== -1
-      ),
-    },
-    {
-      displayName: 'Download single',
-      exfils: exfils.filter(
-        (e) => e.capabilities.indexOf('DownloadSingle') !== -1
-      ),
-    },
-    {
-      displayName: 'Upload chunked',
-      exfils: exfils.filter(
-        (e) => e.capabilities.indexOf('UploadChunked') !== -1
-      ),
-    },
-    {
-      displayName: 'Download chunked',
-      exfils: exfils.filter(
-        (e) => e.capabilities.indexOf('DownloadChunked') !== -1
-      ),
-    },
-  ].filter((t) => t.exfils.length > 0);
+  function onModeSelected(type: SelectedMode, exfils: ExfilExtension[]): void {
+    setMode(type);
+    setExfils(exfils);
+  }
+
+  function onExfilSelected(idx: number): void {
+    setSelectedExfil(exfils[idx]);
+  }
 
   return (
     <React.Fragment>
@@ -129,46 +79,54 @@ export default function Main() {
               </Typography>
             </Stack>
           </CardContent>
-          {authenticated === undefined && (
+
+          {authenticated === false && (
             <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Validating authentication...
-              </Typography>
+              <Authentication
+                api={api}
+                onAuthenticated={(_) => setAuthenticated(true)}
+              />
             </CardContent>
           )}
-          {authenticated === false && (
-            <>
-              <CardContent>
-                <Stack direction="row" spacing={2}>
-                  <TextField
-                    label="Code"
-                    id="outlined-code-small"
-                    value={totp}
-                    size="small"
-                    InputProps={{ readOnly: !totpEditAvailable }}
-                    inputProps={{ maxLength: 6 }}
-                    onChange={onTotpChange}
-                    error={lastError !== undefined}
-                  />
-                </Stack>
-              </CardContent>
-            </>
-          )}
-          {authenticated === true && config && (
-            <CardContent>
-              <Tabs
-                value={tabIdx}
-                onChange={(_, idx) => setTabIdx(idx)}
-                aria-label="basic tabs example"
-              >
-                {tabs.map((t, i) => (
-                  <Tab key={i} label={t.displayName} />
-                ))}
-              </Tabs>
-                {tabIdx >= 0 && tabIdx < tabs.length ? tabs[]}
 
-              {tabIdx == 0 && <BasicHTTPUpload api={api} config={config} />}
-              {tabIdx == 1 && <BasicHTTPDownload api={api} config={config} />}
+          {config && (
+            <Stepper activeStep={step} orientation="vertical">
+              <Step key={0}>
+                <StepLabel>{authenticated ? 'Authenticated!' : 'Authentication'}</StepLabel>
+                <StepContent>lul</StepContent>
+              </Step>
+              <Step key={1}>
+                <StepLabel>What would you like to do?</StepLabel>
+                <StepContent>lul</StepContent>
+              </Step>
+              <Step key={2}>
+                <StepLabel>Select exfiltration transport</StepLabel>
+                <StepContent>lul</StepContent>
+              </Step>
+              <Step key={3}>
+                <StepLabel>Select storage</StepLabel>
+                <StepContent>lul</StepContent>
+              </Step>
+            </Stepper>
+          )}
+
+          {config && mode == 'None' && (
+            <CardContent>
+              <Typography gutterBottom variant="h6" component="div">
+                What would you like to do?
+              </Typography>
+              <ModeSelector exfils={exfils} onSelected={onModeSelected} />
+              {/*tabIdx >= 0 && tabIdx < tabs.length ? tabs[]*/}
+            </CardContent>
+          )}
+
+          {mode != 'None' && exfils && selectedExfil === null && (
+            <CardContent>
+              <BasicSelector
+                items={exfils}
+                type="Exfil"
+                onSelected={onExfilSelected}
+              />
             </CardContent>
           )}
         </Card>

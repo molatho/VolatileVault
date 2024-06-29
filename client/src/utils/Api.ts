@@ -74,7 +74,13 @@ export default class Api {
 
   public async isAuthenticated(): Promise<ApiGetAuthResponse> {
     try {
-      const res = await axios.get(Api.BASE_URL + '/api/auth');
+      type Obj = { [key: string]: string };
+      var headers: Obj = {};
+      if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+
+      const res = await axios.get(Api.BASE_URL + '/api/auth', {
+        headers: headers,
+      });
 
       return Api.success_from_data(res.data) as ApiGetAuthResponse;
     } catch (error) {
@@ -86,6 +92,11 @@ export default class Api {
 
   public async authenticate(code: string): Promise<ApiAuthResponse> {
     try {
+      type Obj = { [key: string]: string };
+      var headers: Obj = {};
+      headers['content-type'] = 'application/json';
+      if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+
       const res = await axios.post(
         Api.BASE_URL + '/api/auth',
         { totp: code },
@@ -101,56 +112,6 @@ export default class Api {
       return Api.success_from_data(res.data) as ApiGetAuthResponse;
     } catch (error) {
       return Promise.reject<ApiResponse>(Api.fail_from_error(error));
-    }
-  }
-
-  public async upload(blob: ArrayBuffer): Promise<ApiUploadResponse> {
-    try {
-      const res = await axios.post(Api.BASE_URL + '/api/files/upload', blob, {
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          Authorization: `Bearer ${this.token}`,
-        },
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-        responseType: 'json',
-      });
-
-      if (!res.data?.id)
-        return Promise.reject(
-          Api.fail_from_error(undefined, 'Failed to upload file ID')
-        );
-
-      return Api.success_from_data(res.data) as ApiUploadResponse;
-    } catch (error) {
-      return Promise.reject<ApiResponse>(Api.fail_from_error(error));
-    }
-  }
-
-  public async download(id: string): Promise<ApiDownloadResponse> {
-    try {
-      const res = await axios.get(`${Api.BASE_URL}/api/files/download/${id}`, {
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-        },
-        responseType: 'arraybuffer',
-      });
-
-      if (!res.data)
-        return Promise.reject(
-          Api.fail_from_error(undefined, 'Failed to download data')
-        );
-
-      return Api.success_from_data({
-        data: res.data,
-      }) as ApiDownloadResponse;
-    } catch (error) {
-      return Promise.reject(
-        Api.fail_from_error(
-          error,
-          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
-        ) as ApiDownloadResponse
-      );
     }
   }
 

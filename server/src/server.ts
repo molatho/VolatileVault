@@ -44,7 +44,7 @@ const main = async (): Promise<void> => {
   app.disable('x-powered-by');
 
   app.use(nocache());
-  app.use(cors());
+  app.use(cors()); // TODO: Disable in prod!
 
   app.use(bodyParser.urlencoded({ extended: false }));
 

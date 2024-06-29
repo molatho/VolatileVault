@@ -1,7 +1,5 @@
-import axios from 'axios';
 import Api, {
   ApiConfigBaseExfil,
-  ApiConfigBasicHTTPExfil,
   ApiConfigResponse,
   ApiDownloadResponse,
   ApiResponse,
@@ -24,152 +22,19 @@ export type ExfilProviderCapabilities =
   | 'RemoveHost';
 
 // Callback used to provide live updates to the UI
-type ReportEvent = (
+export type ReportEvent = (
   category: string,
   content: string,
   variant?: 'error' | 'success'
 ) => void;
 
-export interface ExfilExtension {
-  get name(): string;
-  get displayName(): string;
-  get capabilities(): ExfilProviderCapabilities[];
-  isPresent: (config: ApiConfigResponse) => boolean;
-  getConfig: (config: ApiConfigResponse) => ApiConfigBaseExfil;
-
-  // Custom views, only effective if overridden & booleans set
-  downloadSingleView?: (config: ApiConfigResponse, api: Api, extension: ExfilExtension) => TabView;
-  uploadSingleView?: (config: ApiConfigResponse, api: Api, extension: ExfilExtension) => TabView;
-  downloadChunkedView?: (config: ApiConfigResponse, api: Api, extension: ExfilExtension) => TabView;
-  uploadChunkedView?: (config: ApiConfigResponse, api: Api, extension: ExfilExtension) => TabView;
-  configView?: (config: ApiConfigResponse) => TabView;
-
-  // Backend API calls analogous to server\src\extensions\exfil\provider.ts
-  downloadSingle?: (
-    config: ApiConfigBaseExfil,
-    api: Api,
-    id: string,
-    reportEvent?: ReportEvent
-  ) => Promise<ApiDownloadResponse>;
-  uploadSingle?: (
-    config: ApiConfigBaseExfil,
-    api: Api,
-    storage: string,
-    data: ArrayBuffer,
-    reportEvent?: ReportEvent
-  ) => Promise<ApiUploadResponse>;
-  initChunkDownload?: (
-    config: ApiConfigBaseExfil,
-    api: Api,
-    storage: string,
-    reportEvent?: ReportEvent
-  ) => Promise<ApiResponse>;
-  initChunkUpload?: (
-    config: ApiConfigBaseExfil,
-    api: Api,
-    storage: string,
-    reportEvent?: ReportEvent
-  ) => Promise<ApiResponse>; // TODO: Define info type
-  downloadChunk?: (
-    config: ApiConfigBaseExfil,
-    api: Api,
-    id: string,
-    reportEvent?: ReportEvent
-  ) => Promise<ApiDownloadResponse>;
-  uploadChunk?: (
-    config: ApiConfigBaseExfil,
-    api: Api,
-    storage: string,
-    data: ArrayBuffer,
-    reportEvent?: ReportEvent
-  ) => Promise<ApiUploadResponse>;
-  addHost?: (
-    config: ApiConfigBaseExfil,
-    api: Api,
-    reportEvent: ReportEvent
-  ) => Promise<string>;
-  removeHost?: (
-    config: ApiConfigBaseExfil,
-    api: Api,
-    host: string,
-    reportEvent: ReportEvent
-  ) => Promise<void>;
+export interface BasicInfoHolder {
+  name: string;
+  displayName: string;
+  description: string;
 }
 
-export const EXFILS: ExfilExtension[] = [
-  {
-    name: 'basichttp',
-    displayName: 'Built-in HTTP',
-    capabilities: ['UploadSingle', 'DownloadSingle'],
-    isPresent: (config: ApiConfigResponse) =>
-      config.exfils.basichttp !== undefined && config.exfils.basichttp !== null,
-    getConfig: (config: ApiConfigResponse) =>
-      config.exfils.basichttp as ApiConfigBaseExfil,
-    uploadSingle: async (config, api, storage, data, reportEvent) => {
-      const cfg = config as ApiConfigBasicHTTPExfil;
-      const host = cfg.hosts && cfg.hosts.length ? cfg.hosts[Math.floor(Math.random() * cfg.hosts.length)] : Api.BASE_URL;
-
-      try {
-        const res = await axios.post(
-          `${host}/api/files/upload/${storage}`,
-          data,
-          {
-            headers: {
-              'Content-Type': 'application/octet-stream',
-              Authorization: `Bearer ${api.token}`,
-            },
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-            responseType: 'json',
-          }
-        );
-
-        if (!res.data?.id)
-          return Promise.reject(
-            Api.fail_from_error(undefined, 'Failed to upload file ID')
-          );
-
-        return Api.success_from_data(res.data) as ApiUploadResponse;
-      } catch (error) {
-        return Promise.reject<ApiResponse>(Api.fail_from_error(error));
-      }
-    },
-    downloadSingle: async (config, api, id, reportEvent) => {
-      const cfg = config as ApiConfigBasicHTTPExfil;
-      const host = cfg.hosts && cfg.hosts.length ? cfg.hosts[Math.floor(Math.random() * cfg.hosts.length)] : Api.BASE_URL;
-
-      try {
-        const res = await axios.get(
-          `${host}/api/files/download/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${api.token}`,
-            },
-            responseType: 'arraybuffer',
-          }
-        );
-
-        if (!res.data)
-          return Promise.reject(
-            Api.fail_from_error(undefined, 'Failed to download data')
-          );
-
-        return Api.success_from_data({
-          data: res.data,
-        }) as ApiDownloadResponse;
-      } catch (error) {
-        return Promise.reject(
-          Api.fail_from_error(
-            error,
-            (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
-          ) as ApiDownloadResponse
-        );
-      }
-    },
-  },
-];
-
-export interface StorageExtension {
+export interface StorageExtension extends BasicInfoHolder {
   name: string;
   displayName: string;
   isPresent: (config: ApiConfigResponse) => boolean;
@@ -177,10 +42,105 @@ export interface StorageExtension {
   infoView?: (config: ApiConfigResponse) => JSX.Element;
 }
 
+export interface ExfilExtension extends BasicInfoHolder {
+  get capabilities(): ExfilProviderCapabilities[];
+  isPresent: () => boolean;
+  getConfig: () => ApiConfigBaseExfil;
+
+  // Custom views, only effective if overridden & booleans set
+  downloadSingleView: (storage: StorageExtension) => TabView;
+  uploadSingleView: (storage: StorageExtension) => TabView;
+  downloadChunkedView: (storage: StorageExtension) => TabView;
+  uploadChunkedView: (storage: StorageExtension) => TabView;
+  configView: (config: ApiConfigResponse) => TabView;
+
+  // Backend API calls analogous to server\src\extensions\exfil\provider.ts
+  downloadSingle: (
+    id: string,
+    reportEvent?: ReportEvent
+  ) => Promise<ApiDownloadResponse>;
+  uploadSingle: (
+    storage: string,
+    data: ArrayBuffer,
+    reportEvent?: ReportEvent
+  ) => Promise<ApiUploadResponse>;
+  initChunkDownload: (
+    storage: string,
+    reportEvent?: ReportEvent
+  ) => Promise<ApiResponse>;
+  initChunkUpload: (
+    storage: string,
+    reportEvent?: ReportEvent
+  ) => Promise<ApiResponse>; // TODO: Define info type
+  downloadChunk: (
+    id: string,
+    reportEvent?: ReportEvent
+  ) => Promise<ApiDownloadResponse>;
+  uploadChunk: (
+    storage: string,
+    data: ArrayBuffer,
+    reportEvent?: ReportEvent
+  ) => Promise<ApiUploadResponse>;
+  addHost: (reportEvent: ReportEvent) => Promise<string>;
+  removeHost: (host: string, reportEvent: ReportEvent) => Promise<void>;
+}
+
+export abstract class BaseExfilExtension implements ExfilExtension {
+  protected api: Api;
+  protected config: ApiConfigResponse;
+
+  public constructor(api: Api, config: ApiConfigResponse) {
+    this.api = api;
+    this.config = config;
+  }
+  abstract get capabilities(): ExfilProviderCapabilities[];
+
+  abstract isPresent(): boolean;
+  abstract getConfig(): ApiConfigBaseExfil;
+  abstract downloadSingleView(storage: StorageExtension): TabView;
+  abstract uploadSingleView(storage: StorageExtension): TabView;
+  abstract downloadChunkedView(storage: StorageExtension): TabView;
+  abstract uploadChunkedView(storage: StorageExtension): TabView;
+  abstract configView(config: ApiConfigResponse): TabView;
+  abstract downloadSingle(
+    id: string,
+    reportEvent?: ReportEvent | undefined
+  ): Promise<ApiDownloadResponse>;
+  abstract uploadSingle(
+    storage: string,
+    data: ArrayBuffer,
+    reportEvent?: ReportEvent | undefined
+  ): Promise<ApiUploadResponse>;
+  abstract initChunkDownload(
+    storage: string,
+    reportEvent?: ReportEvent | undefined
+  ): Promise<ApiResponse>;
+  abstract initChunkUpload(
+    storage: string,
+    reportEvent?: ReportEvent | undefined
+  ): Promise<ApiResponse>;
+  abstract downloadChunk(
+    id: string,
+    reportEvent?: ReportEvent | undefined
+  ): Promise<ApiDownloadResponse>;
+  abstract uploadChunk(
+    storage: string,
+    data: ArrayBuffer,
+    reportEvent?: ReportEvent | undefined
+  ): Promise<ApiUploadResponse>;
+  abstract addHost(reportEvent: ReportEvent): Promise<string>;
+  abstract removeHost(host: string, reportEvent: ReportEvent): Promise<void>;
+  abstract get name(): string;
+  abstract get displayName(): string;
+  abstract get description(): string;
+}
+
 export const STORAGES: StorageExtension[] = [
   {
     name: 'filesystem',
     displayName: 'Built-in Filesystem',
+    description:
+      'File storage in the backed server. Files are removed after a configurable amount of time.',
     isPresent: (config: ApiConfigResponse) =>
       config.storages.filesystem !== undefined &&
       config.storages.filesystem !== null,

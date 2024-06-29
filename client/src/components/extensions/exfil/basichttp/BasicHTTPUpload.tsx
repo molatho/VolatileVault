@@ -25,12 +25,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import jszip from 'jszip';
 import { encryptSymmetric } from '../../../../utils/Crypto';
-import Api, { ApiConfigResponse } from '../../../../utils/Api';
 import { enqueueSnackbar } from 'notistack';
 import moment from 'moment';
 import EnterPassword from '../../../EnterPassword';
 import { calcSize, formatSize } from '../../../../utils/Files';
 import { fromArrayBuffer } from '../../../../utils/Entropy';
+import { ExfilExtension, StorageExtension } from '../../Extension';
 
 interface FileSelectionProps {
   onFilesSelected: (files: File[]) => void;
@@ -265,7 +265,8 @@ interface UploadInfo {
 interface ProcessUploadProps {
   files: File[];
   password: string;
-  api: Api;
+  exfil: ExfilExtension;
+  storage: StorageExtension;
   onFinished: (info: UploadInfo) => void;
   maxFileSize?: number;
 }
@@ -273,7 +274,8 @@ interface ProcessUploadProps {
 function ProcessUpload({
   files,
   password,
-  api,
+  exfil,
+  storage,
   onFinished,
   maxFileSize,
 }: ProcessUploadProps) {
@@ -398,8 +400,7 @@ function ProcessUpload({
     }
 
     addEntry('Upload', 'Starting...');
-    api
-      .upload(tmp)
+    exfil.uploadSingle(storage.name, tmp)
       .then((res) => {
         addEntry('Upload', 'Done!', 'success');
         enqueueSnackbar({
@@ -497,11 +498,11 @@ function UploadInfoElement({ info }: UploadInfoElementProps) {
 }
 
 interface UploadProps {
-  api: Api;
-  config: ApiConfigResponse;
+  exfil: ExfilExtension;
+  storage: StorageExtension;
 }
 
-export default function BasicHTTPUpload({ api, config }: UploadProps) {
+export default function BasicHttpUpload({ exfil, storage }: UploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(0);
@@ -530,7 +531,8 @@ export default function BasicHTTPUpload({ api, config }: UploadProps) {
             <ProcessUpload
               files={files}
               password={password}
-              api={api}
+              exfil={exfil}
+              storage={storage}
               onFinished={(info) => {
                 setUploadInfo(info);
                 setStep(2);

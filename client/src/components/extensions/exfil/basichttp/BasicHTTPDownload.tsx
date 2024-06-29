@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import Api, { ApiConfigResponse } from '../../../../utils/Api';
 import EnterPassword from '../../../EnterPassword';
 import {
   Box,
@@ -22,15 +21,16 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { saveAs } from 'file-saver';
 import jszip from 'jszip';
 import moment from 'moment';
+import { ExfilExtension } from '../../Extension';
 
 interface DownloadBlobProps {
-  api: Api;
+  exfil: ExfilExtension;
   enabled?: boolean;
   onDownloaded: (id: string, blob: ArrayBuffer) => void;
 }
 
-export function DownloadBlob({
-  api,
+function DownloadBlob({
+  exfil,
   enabled = true,
   onDownloaded,
 }: DownloadBlobProps) {
@@ -51,8 +51,8 @@ export function DownloadBlob({
     setCanDownload(false);
     setCanEdit(false);
     setDownloadError('');
-    api
-      .download(id)
+    exfil
+      .downloadSingle(id)
       .then((res) => {
         enqueueSnackbar({
           message: `Downloaded ${formatSize(res.data.byteLength)} of data!`,
@@ -101,11 +101,10 @@ export function DownloadBlob({
 }
 
 interface DownloadProps {
-  api: Api;
-  config: ApiConfigResponse;
+  exfil: ExfilExtension;
 }
 
-export default function BasicHTTPDownload({ api, config }: DownloadProps) {
+export default function BasicHttpDownload({ exfil }: DownloadProps) {
   interface FileInfo {
     name: string;
     date: Date;
@@ -170,7 +169,7 @@ export default function BasicHTTPDownload({ api, config }: DownloadProps) {
   return (
     <Stack direction="column" spacing={4} mt={2}>
       <DownloadBlob
-        api={api}
+        exfil={exfil}
         onDownloaded={(id, blob) => {
           setBlob(blob);
           setId(id);
