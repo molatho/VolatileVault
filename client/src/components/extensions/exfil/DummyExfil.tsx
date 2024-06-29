@@ -34,19 +34,34 @@ export class DummyExfil extends BaseExfilExtension {
     };
   }
   downloadSingleView(storage: StorageExtension): TabView {
-    throw new Error('Method not implemented.');
+    return {
+      tabText: "Dummy basic download",
+      content: <>Dummy basic download</>
+    }
   }
   uploadSingleView(storage: StorageExtension): TabView {
-    throw new Error('Method not implemented.');
+    return {
+      tabText: "Dummy basic upload",
+      content: <>Dummy basic upload</>
+    }
   }
   downloadChunkedView(storage: StorageExtension): TabView {
-    throw new Error('Method not implemented.');
+    return {
+      tabText: "Dummy chunked download",
+      content: <>Dummy chunked download</>
+    }
   }
   uploadChunkedView(storage: StorageExtension): TabView {
-    throw new Error('Method not implemented.');
+    return {
+      tabText: "Dummy chunked upload",
+      content: <>Dummy chunked upload</>
+    }
   }
   configView(config: ApiConfigResponse): TabView {
-    throw new Error('Method not implemented.');
+    return {
+      tabText: "Dummy config view",
+      content: <>Dummy config view</>
+    }
   }
 
   downloadSingle(
@@ -100,6 +115,6 @@ export class DummyExfil extends BaseExfilExtension {
     return 'Dummy Exfiltration Transport';
   }
   get description(): string {
-    return "Non-functional dummy exfiltration transport. This won't do anything.";
+    return "Non-functional dummy exfiltration transport. This won't do anything and is only used for testing the frontend. It offers all capabilities Volatile Vault provides to exfiltration extensions.";
   }
 }

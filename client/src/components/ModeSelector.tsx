@@ -14,18 +14,10 @@ interface SelectorProps {
 }
 
 export default function ModeSelector({ exfils, onSelected }: SelectorProps) {
-  var hasUploadSingle = exfils.find((e) =>
-    e.capabilities.find((c) => c == 'UploadSingle')
-  );
-  var hasDownloadSingle = exfils.find((e) =>
-    e.capabilities.find((c) => c == 'DownloadSingle')
-  );
-  var hasUploadChunked = exfils.find((e) =>
-    e.capabilities.find((c) => c == 'UploadChunked')
-  );
-  var hasDownloadChunked = exfils.find((e) =>
-    e.capabilities.find((c) => c == 'DownloadChunked')
-  );
+  var hasUploadSingle = exfils.find((e) => e.canUploadSingle);
+  var hasDownloadSingle = exfils.find((e) => e.canDownloadSingle);
+  var hasUploadChunked = exfils.find((e) => e.canUploadChunked);
+  var hasDownloadChunked = exfils.find((e) => e.canDownloadChunked);
 
   const onModeSelected = (type: SelectedMode) => {
     if (type == 'None') throw new Error('Invalid selector type None');

@@ -9,10 +9,10 @@ export class BasicHttpExfil extends BaseExfilExtension {
     return 'basichttp';
   }
   get displayName(): string {
-    return 'Built-in HTTP';
+    return 'Built-In HTTP';
   }
   get description(): string {
-    return 'Transfers file via a single HTTP route to the backend. Files are zipped & encrypted before upload and decrypted & unzipped after download.';
+    return 'Uses regular HTTP(S) for file uploads and downloads. Files are zipped & encrypted before upload and decrypted & unzipped after download. Uploads and downloads use a REST interface and data is transferred in large, continuous blobs. Transfer looks like regular HTTP uploads/downloads.';
   }
   get capabilities(): ExfilProviderCapabilities[] {
     return ['UploadSingle', 'DownloadSingle'];

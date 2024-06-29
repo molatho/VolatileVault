@@ -47,6 +47,13 @@ export interface ExfilExtension extends BasicInfoHolder {
   isPresent: () => boolean;
   getConfig: () => ApiConfigBaseExfil;
 
+  canDownloadSingle: () => boolean;
+  canUploadSingle: () => boolean;
+  canDownloadChunked: () => boolean;
+  canUploadChunked: () => boolean;
+  canAddHost: () => boolean;
+  canRemoveHost: () => boolean;
+
   // Custom views, only effective if overridden & booleans set
   downloadSingleView: (storage: StorageExtension) => TabView;
   uploadSingleView: (storage: StorageExtension) => TabView;
@@ -94,6 +101,25 @@ export abstract class BaseExfilExtension implements ExfilExtension {
     this.config = config;
   }
   abstract get capabilities(): ExfilProviderCapabilities[];
+
+  canDownloadSingle(): boolean {
+    return 'DownloadSingle' in this.capabilities;
+  }
+  canUploadSingle(): boolean {
+    return 'UploadSingle' in this.capabilities;
+  }
+  canDownloadChunked(): boolean {
+    return 'DownloadChunked' in this.capabilities;
+  }
+  canUploadChunked(): boolean {
+    return 'UploadChunked' in this.capabilities;
+  }
+  canAddHost(): boolean {
+    return 'AddHost' in this.capabilities;
+  }
+  canRemoveHost(): boolean {
+    return 'RemoveHost' in this.capabilities;
+  }
 
   abstract isPresent(): boolean;
   abstract getConfig(): ApiConfigBaseExfil;
