@@ -62,19 +62,23 @@ export default function BasicSelector({
   const [idx, setIdx] = useState(0);
   const [expanded, setExpanded] = useState(0);
 
-  return items.map((item, idx) => (
-    <Accordion
-      key={idx}
-      expanded={expanded == idx ||items.length == 1}
-      onChange={() => setExpanded(idx)}
-    >
-      <AccordionSummary>
-        <Typography>{item.displayName}</Typography>
-      </AccordionSummary>
-      <AccordionDetails>{item.description}</AccordionDetails>
-      <AccordionActions>
-        <Button onClick={() => onSelected(idx)}>Select</Button>
-      </AccordionActions>
-    </Accordion>
-  ));
+  return (
+    <>
+      {items.map((item, idx) => (
+        <Accordion
+          key={idx}
+          expanded={expanded == idx || items.length == 1}
+          onChange={() => setExpanded(idx)}
+        >
+          <AccordionSummary>
+            <Typography>{item.displayName}</Typography>
+          </AccordionSummary>
+          <AccordionDetails>{item.description}</AccordionDetails>
+          <AccordionActions>
+            <Button onClick={() => onSelected(idx)}>Select</Button>
+          </AccordionActions>
+        </Accordion>
+      ))}
+    </>
+  );
 }

@@ -6,12 +6,6 @@ import Api, {
   ApiUploadResponse,
 } from '../../utils/Api';
 
-export interface TabView {
-  tabText: string;
-  content: JSX.Element;
-  infoView?: JSX.Element;
-}
-
 export type ExfilProviderCapabilities =
   | 'None'
   | 'UploadSingle'
@@ -42,6 +36,17 @@ export interface StorageExtension extends BasicInfoHolder {
   infoView?: (config: ApiConfigResponse) => JSX.Element;
 }
 
+export interface ExfilDownloadViewProps {
+  storage: StorageExtension;
+}
+export interface ExfilConfigViewProps {
+  config: ApiConfigResponse;
+}
+
+export type ExfilDownloadFn = () => JSX.Element;
+export type ExfilUploadFn = (props: ExfilDownloadViewProps) => JSX.Element;
+export type ExfilConfigFn = (props: ExfilConfigViewProps) => JSX.Element;
+
 export interface ExfilExtension extends BasicInfoHolder {
   get capabilities(): ExfilProviderCapabilities[];
   isPresent: () => boolean;
@@ -55,11 +60,11 @@ export interface ExfilExtension extends BasicInfoHolder {
   canRemoveHost: () => boolean;
 
   // Custom views, only effective if overridden & booleans set
-  downloadSingleView: (storage: StorageExtension) => TabView;
-  uploadSingleView: (storage: StorageExtension) => TabView;
-  downloadChunkedView: (storage: StorageExtension) => TabView;
-  uploadChunkedView: (storage: StorageExtension) => TabView;
-  configView: (config: ApiConfigResponse) => TabView;
+  downloadSingleView: ExfilDownloadFn;
+  uploadSingleView: ExfilUploadFn;
+  downloadChunkedView: ExfilDownloadFn;
+  uploadChunkedView: ExfilUploadFn;
+  configView: ExfilConfigFn;
 
   // Backend API calls analogous to server\src\extensions\exfil\provider.ts
   downloadSingle: (
@@ -100,6 +105,13 @@ export abstract class BaseExfilExtension implements ExfilExtension {
     this.api = api;
     this.config = config;
   }
+  
+  abstract get downloadSingleView(): ExfilDownloadFn;
+  abstract get uploadSingleView(): ExfilUploadFn;
+  abstract get downloadChunkedView(): ExfilDownloadFn;
+  abstract get uploadChunkedView(): ExfilUploadFn;  
+  abstract get configView(): ExfilConfigFn;
+
   abstract get capabilities(): ExfilProviderCapabilities[];
 
   canDownloadSingle(): boolean {
@@ -123,11 +135,7 @@ export abstract class BaseExfilExtension implements ExfilExtension {
 
   abstract isPresent(): boolean;
   abstract getConfig(): ApiConfigBaseExfil;
-  abstract downloadSingleView(storage: StorageExtension): TabView;
-  abstract uploadSingleView(storage: StorageExtension): TabView;
-  abstract downloadChunkedView(storage: StorageExtension): TabView;
-  abstract uploadChunkedView(storage: StorageExtension): TabView;
-  abstract configView(config: ApiConfigResponse): TabView;
+
   abstract downloadSingle(
     id: string,
     reportEvent?: ReportEvent | undefined
@@ -154,8 +162,10 @@ export abstract class BaseExfilExtension implements ExfilExtension {
     data: ArrayBuffer,
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiUploadResponse>;
+
   abstract addHost(reportEvent: ReportEvent): Promise<string>;
   abstract removeHost(host: string, reportEvent: ReportEvent): Promise<void>;
+
   abstract get name(): string;
   abstract get displayName(): string;
   abstract get description(): string;

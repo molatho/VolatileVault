@@ -1,10 +1,41 @@
-import axios from "axios";
-import Api, { ApiConfigBasicHTTPExfil, ApiDownloadResponse, ApiUploadResponse, ApiResponse, ApiConfigResponse } from "../../../../utils/Api";
-import { BaseExfilExtension, ExfilProviderCapabilities, ReportEvent, StorageExtension, TabView } from "../../Extension";
-import BasicHttpDownload from "./BasicHttpDownload";
-import BasicHttpUpload from "./BasicHttpUpload";
+import axios from 'axios';
+import Api, {
+  ApiConfigBasicHTTPExfil,
+  ApiDownloadResponse,
+  ApiUploadResponse,
+  ApiResponse,
+} from '../../../../utils/Api';
+import {
+  BaseExfilExtension,
+  ExfilConfigFn,
+  ExfilDownloadFn,
+  ExfilDownloadViewProps,
+  ExfilProviderCapabilities,
+  ExfilUploadFn,
+  ReportEvent,
+} from '../../Extension';
+import BasicHttpDownload from './BasicHttpDownload';
+import BasicHttpUpload from './BasicHttpUpload';
 
 export class BasicHttpExfil extends BaseExfilExtension {
+  get downloadSingleView(): ExfilDownloadFn {
+    return () => <BasicHttpDownload exfil={this} />;
+  }
+  get uploadSingleView(): ExfilUploadFn {
+    return ({ storage }: ExfilDownloadViewProps) => (
+      <BasicHttpUpload exfil={this} storage={storage} />
+    );
+  }
+  get configView(): ExfilConfigFn {
+    throw new Error('Method not implemented.');
+  }
+  get downloadChunkedView(): ExfilDownloadFn {
+    throw new Error('Method not implemented.');
+  }
+  get uploadChunkedView(): ExfilUploadFn {
+    throw new Error('Method not implemented.');
+  }
+
   get name(): string {
     return 'basichttp';
   }
@@ -27,18 +58,6 @@ export class BasicHttpExfil extends BaseExfilExtension {
     if (!this.config.exfils.basichttp)
       throw new Error('Attempted to access missing basichttp config!');
     return this.config.exfils.basichttp.info as ApiConfigBasicHTTPExfil;
-  }
-  downloadSingleView(storage: StorageExtension): TabView {
-    return {
-      tabText: 'Simple HTTP Download',
-      content: <BasicHttpDownload exfil={this} />,
-    };
-  }
-  uploadSingleView(storage: StorageExtension): TabView {
-    return {
-      tabText: 'Simple HTTP Upload',
-      content: <BasicHttpUpload exfil={this} storage={storage} />,
-    };
   }
 
   async downloadSingle(
@@ -114,16 +133,6 @@ export class BasicHttpExfil extends BaseExfilExtension {
     }
   }
 
-  // Not implemented
-  downloadChunkedView(storage: StorageExtension): TabView {
-    throw new Error('Method not implemented.');
-  }
-  uploadChunkedView(storage: StorageExtension): TabView {
-    throw new Error('Method not implemented.');
-  }
-  configView(config: ApiConfigResponse): TabView {
-    throw new Error('Method not implemented.');
-  }
   initChunkDownload(
     storage: string,
     reportEvent?: ReportEvent | undefined
