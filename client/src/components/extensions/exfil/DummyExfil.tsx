@@ -7,13 +7,32 @@ import {
 } from '../../../utils/Api';
 import {
   BaseExfilExtension,
+  ConfigFn,
+  ConfigViewProps,
+  ExfilDownloadFn,
+  ExfilDownloadViewProps,
   ExfilProviderCapabilities,
+  ExfilUploadFn,
   ReportEvent,
   StorageExtension,
-  TabView,
 } from '../Extension';
 
 export class DummyExfil extends BaseExfilExtension {
+  get downloadSingleView(): ExfilDownloadFn {
+    return () => <>Dummy single download</>;
+  }
+  get uploadSingleView(): ExfilUploadFn {
+    return ({ storage }: ExfilDownloadViewProps) => <>Dummy single upload</>;
+  }
+  get downloadChunkedView(): ExfilDownloadFn {
+    return () => <>Dummy chunked download</>;
+  }
+  get uploadChunkedView(): ExfilUploadFn {
+    return ({ storage }: ExfilDownloadViewProps) => <>Dummy chunked upload</>;
+  }
+  get configView(): ConfigFn {
+    return (props: ConfigViewProps) => <>Dummy config view</>;
+  }
   get capabilities(): ExfilProviderCapabilities[] {
     return [
       'UploadSingle',
@@ -32,36 +51,6 @@ export class DummyExfil extends BaseExfilExtension {
       single_size: 1024 * 1024 * 1024,
       chunk_size: 1024 * 1024 * 1024,
     };
-  }
-  downloadSingleView(storage: StorageExtension): TabView {
-    return {
-      tabText: "Dummy basic download",
-      content: <>Dummy basic download</>
-    }
-  }
-  uploadSingleView(storage: StorageExtension): TabView {
-    return {
-      tabText: "Dummy basic upload",
-      content: <>Dummy basic upload</>
-    }
-  }
-  downloadChunkedView(storage: StorageExtension): TabView {
-    return {
-      tabText: "Dummy chunked download",
-      content: <>Dummy chunked download</>
-    }
-  }
-  uploadChunkedView(storage: StorageExtension): TabView {
-    return {
-      tabText: "Dummy chunked upload",
-      content: <>Dummy chunked upload</>
-    }
-  }
-  configView(config: ApiConfigResponse): TabView {
-    return {
-      tabText: "Dummy config view",
-      content: <>Dummy config view</>
-    }
   }
 
   downloadSingle(

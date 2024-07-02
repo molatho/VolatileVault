@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import Api, { ApiConfigResponse, ApiResponse } from '../utils/Api';
 import ModeSelector, { SelectedMode } from './ModeSelector';
+import { ExfilExtension, StorageExtension } from './extensions/Extension';
 import {
-  ExfilExtension,
-  STORAGES,
-  StorageExtension,
-} from './extensions/Extension';
-import { initializeExfilExtensions } from './extensions/ExtensionManager';
+  getStorages,
+  initializeExfilExtensions,
+} from './extensions/ExtensionManager';
 import {
   Typography,
   Stepper,
@@ -30,7 +29,18 @@ interface WizardProps {
   ) => void;
 }
 
+enum Steps {
+  Authentication,
+  SelectAction,
+  SelectExfil,
+  ConfigureExfil,
+  SelectStorage,
+  ConfigureStorage,
+  Confirm,
+}
+
 export default function BasicWizard({ api, onFinished }: WizardProps) {
+  const [storages, _] = useState(getStorages());
   const [authenticated, setAuthenticated] = useState<boolean>(false);
   const [config, setConfig] = useState<ApiConfigResponse | undefined>(
     undefined
@@ -40,9 +50,11 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
   const [selectedExfil, setSelectedExfil] = useState<ExfilExtension | null>(
     null
   );
+  const [exfilConfigured, setExfilConfigured] = useState(false);
   const [selectedStorage, setSelectedStorage] =
     useState<StorageExtension | null>(null);
-  const [step, setStep] = useState(0);
+  const [storageConfigured, setStorageConfigured] = useState(false);
+  const [step, setStep] = useState(Steps.Authentication);
   const isUploadMode = mode == 'UploadChunked' || mode == 'UploadSingle';
 
   useEffect(() => {
@@ -68,24 +80,34 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
 
   function onAuthenticated(): void {
     setAuthenticated(true);
-    setStep(step + 1);
+    setStep(Steps.SelectAction);
   }
 
   function onModeSelected(type: SelectedMode, exfils: ExfilExtension[]): void {
     setMode(type);
     setExfils(exfils);
-    setStep(step + 1);
+    setStep(Steps.SelectExfil);
   }
 
   function onExfilSelected(idx: number): void {
-    setSelectedExfil(exfils[idx]);
-    if (isUploadMode) setStep(step + 1);
-    else setStep(step + 2); // We don't need to select a storage when all we'll do is downloading.
+    const exfil = exfils[idx];
+    setSelectedExfil(exfil);
+
+    var nextStep = Steps.ConfigureExfil;
+
+    if (!exfil.isConfigurable) {
+      nextStep = Steps.SelectStorage; // Skip configuration step
+      if (!isUploadMode) nextStep = Steps.ConfigureStorage + 1; // Skip storage selection + configuration step for downloads
+    }
+
+    setStep(nextStep);
   }
 
   function onStorageSelected(idx: number): void {
-    setSelectedStorage(STORAGES[idx]);
-    setStep(step + 1);
+    const storage = storages[idx];
+    setSelectedStorage(storage);
+    if (!storage.isConfigurable) setStep(Steps.ConfigureStorage + 1);
+    else setStep(Steps.ConfigureStorage);
   }
 
   function modeToString(mode: SelectedMode): string {
@@ -114,6 +136,8 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
     );
     setMode('None');
     setStep(0);
+    setExfilConfigured(false);
+    setStorageConfigured(false);
   }
 
   function onFinish() {
@@ -125,6 +149,39 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
     );
   }
 
+  const getExfilConfigLabel = () => {
+    if (!selectedExfil) return <i>No transport selected yet.</i>;
+    if (exfilConfigured) return <i>{selectedExfil.displayName} configured.</i>;
+    if (!selectedExfil.isConfigurable)
+      return <i>{selectedExfil?.displayName} is not configurable.</i>;
+
+    return <>Configure {selectedExfil.displayName}:</>;
+  };
+
+  const getStorageConfigLabel = () => {
+    if (!selectedStorage) return <i>No storage selected.</i>;
+    if (storageConfigured)
+      return <i>{selectedStorage.displayName} configured.</i>;
+    if (!selectedStorage.isConfigurable)
+      return <i>{selectedStorage?.displayName} is not configurable.</i>;
+
+    return <>Configure {selectedStorage.displayName}:</>;
+  };
+
+  function onExfilConfigFinished(): void {
+    setExfilConfigured(true);
+    setStep(Steps.ConfigureExfil + 1);
+  }
+
+  function onStorageConfigFinished(): void {
+    setStorageConfigured(true);
+    setStep(Steps.ConfigureStorage + 1);
+  }
+
+  function onConfigChange(config: ApiConfigResponse): void {
+    setConfig(config);
+  }
+
   return (
     <>
       <Typography gutterBottom>
@@ -133,17 +190,19 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
         following wizard to configure your up- & downloads!
       </Typography>
       <Stepper activeStep={step} orientation="vertical">
-        <Step key={0}>
+        {/* 0 - Authentication */}
+        <Step key={Steps.Authentication}>
           <StepLabel>
             <Typography variant="subtitle1">
-              <i>Authenticated!</i>
+              {authenticated ? <i>Authenticated!</i> : <>Authentication</>}
             </Typography>
           </StepLabel>
           <StepContent>
             <Authentication api={api} onAuthenticated={onAuthenticated} />
           </StepContent>
         </Step>
-        <Step key={1}>
+        {/* 1 - Select action */}
+        <Step key={Steps.SelectAction}>
           <StepLabel>
             <Typography variant="subtitle1">
               {mode == 'None' ? (
@@ -157,7 +216,8 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
             <ModeSelector exfils={exfils} onSelected={onModeSelected} />
           </StepContent>
         </Step>
-        <Step key={2}>
+        {/* 2 - Select exfil */}
+        <Step key={Steps.SelectExfil}>
           <StepLabel>
             <Typography variant="subtitle1">
               {selectedExfil == null ? (
@@ -177,8 +237,35 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
             />
           </StepContent>
         </Step>
-        {/* TODO: Put exfil configure view here? */}
-        <Step key={3}>
+        {/* 3 - Configure exfil */}
+        <Step key={Steps.ConfigureExfil}>
+          <StepLabel>
+            <Typography variant="subtitle1">{getExfilConfigLabel()}</Typography>
+          </StepLabel>
+          <StepContent>
+            {selectedExfil?.isConfigurable && (
+              <>
+                {selectedExfil.configView({
+                  config: config as ApiConfigResponse,
+                  onChange: onConfigChange
+                })}
+                <Box sx={{ mb: 2 }}>
+                  <div>
+                    <Button
+                      onClick={onExfilConfigFinished}
+                      variant="contained"
+                      sx={{ mt: 1, mr: 1 }}
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </Box>
+              </>
+            )}
+          </StepContent>
+        </Step>
+        {/* 4 - Select storage */}
+        <Step key={Steps.SelectStorage}>
           <StepLabel>
             <Typography variant="subtitle1">
               {selectedStorage == null ? (
@@ -196,14 +283,44 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
           </StepLabel>
           <StepContent>
             <BasicSelector
-              items={STORAGES}
+              items={storages}
               type="Storage"
               onSelected={onStorageSelected}
             />
           </StepContent>
         </Step>
-        {step == 4 && (
-          <Step key={4}>
+        {/* 5 - Configure storage */}
+        <Step key={Steps.ConfigureStorage}>
+          <StepLabel>
+            <Typography variant="subtitle1">
+              {getStorageConfigLabel()}
+            </Typography>
+          </StepLabel>
+          <StepContent>
+            {selectedStorage?.isConfigurable && (
+              <>
+                {selectedStorage.configView({
+                  config: config as ApiConfigResponse,
+                  onChange: onConfigChange
+                })}
+                <Box sx={{ mb: 2 }}>
+                  <div>
+                    <Button
+                      onClick={onStorageConfigFinished}
+                      variant="contained"
+                      sx={{ mt: 1, mr: 1 }}
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </Box>
+              </>
+            )}
+          </StepContent>
+        </Step>
+        {/* 6 - Confirm */}
+        {step == Steps.Confirm && (
+          <Step key={Steps.Confirm}>
             <StepLabel>
               <Typography variant="subtitle1">Let's go!</Typography>
             </StepLabel>

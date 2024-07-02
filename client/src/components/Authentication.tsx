@@ -28,18 +28,15 @@ export default function Authentication({
 
   useEffect(() => {
     async function checkAuth() {
-      const token = localStorage.getItem('token');
-      if (token != null)
-        api.token = token;
-    
+      const token = api.getToken();
       try {
         const res = await api.isAuthenticated();
         setAuthenticated(res.success);
-        snackSuccess('Authentication successful');
+        if (token == null) snackSuccess('Authentication successful');
         onAuthenticated(token as string);
       } catch (err) {
         if (token != null) {
-          localStorage.clear();
+          api.clearToken();
           snackError('Token expired or invalid; you need to re-authenticate.');
         } else {
           snackInfo('You need to authenticate');
@@ -64,7 +61,7 @@ export default function Authentication({
         setAuthenticated(auth.success);
         setLastError(auth.success ? undefined : auth.message);
         snackSuccess('Authentication successful');
-        if (saveToken) localStorage.setItem('token', auth.token as string);
+        if (saveToken) api.saveToken();
         onAuthenticated(auth.token as string);
       } catch (error) {
         const err = error as ApiResponse;

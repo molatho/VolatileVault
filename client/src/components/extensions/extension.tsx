@@ -26,45 +26,43 @@ export interface BasicInfoHolder {
   name: string;
   displayName: string;
   description: string;
+  isPresent: (config: ApiConfigResponse) => boolean;
+  isConfigurable: boolean;
+  configView: ConfigFn;
 }
 
 export interface StorageExtension extends BasicInfoHolder {
-  name: string;
-  displayName: string;
-  isPresent: (config: ApiConfigResponse) => boolean;
-  configView?: (config: ApiConfigResponse) => JSX.Element;
-  infoView?: (config: ApiConfigResponse) => JSX.Element;
 }
 
 export interface ExfilDownloadViewProps {
   storage: StorageExtension;
 }
-export interface ExfilConfigViewProps {
+export interface ConfigViewProps {
   config: ApiConfigResponse;
+  onChange: (config: ApiConfigResponse) => void;
 }
 
 export type ExfilDownloadFn = () => JSX.Element;
 export type ExfilUploadFn = (props: ExfilDownloadViewProps) => JSX.Element;
-export type ExfilConfigFn = (props: ExfilConfigViewProps) => JSX.Element;
+export type ConfigFn = (props: ConfigViewProps) => JSX.Element;
 
 export interface ExfilExtension extends BasicInfoHolder {
   get capabilities(): ExfilProviderCapabilities[];
   isPresent: () => boolean;
   getConfig: () => ApiConfigBaseExfil;
 
-  canDownloadSingle: () => boolean;
-  canUploadSingle: () => boolean;
-  canDownloadChunked: () => boolean;
-  canUploadChunked: () => boolean;
-  canAddHost: () => boolean;
-  canRemoveHost: () => boolean;
+  get canDownloadSingle(): boolean;
+  get canUploadSingle(): boolean;
+  get canDownloadChunked(): boolean;
+  get canUploadChunked(): boolean;
+  get canAddHost(): boolean;
+  get canRemoveHost(): boolean;
 
   // Custom views, only effective if overridden & booleans set
   downloadSingleView: ExfilDownloadFn;
   uploadSingleView: ExfilUploadFn;
   downloadChunkedView: ExfilDownloadFn;
   uploadChunkedView: ExfilUploadFn;
-  configView: ExfilConfigFn;
 
   // Backend API calls analogous to server\src\extensions\exfil\provider.ts
   downloadSingle: (
@@ -105,32 +103,36 @@ export abstract class BaseExfilExtension implements ExfilExtension {
     this.api = api;
     this.config = config;
   }
-  
+
   abstract get downloadSingleView(): ExfilDownloadFn;
   abstract get uploadSingleView(): ExfilUploadFn;
   abstract get downloadChunkedView(): ExfilDownloadFn;
-  abstract get uploadChunkedView(): ExfilUploadFn;  
-  abstract get configView(): ExfilConfigFn;
+  abstract get uploadChunkedView(): ExfilUploadFn;
+  abstract get configView(): ConfigFn;
 
   abstract get capabilities(): ExfilProviderCapabilities[];
 
-  canDownloadSingle(): boolean {
-    return 'DownloadSingle' in this.capabilities;
+  get canDownloadSingle(): boolean {
+    return this.capabilities.indexOf('DownloadSingle') !== -1;
   }
-  canUploadSingle(): boolean {
-    return 'UploadSingle' in this.capabilities;
+  get canUploadSingle(): boolean {
+    return this.capabilities.indexOf('UploadSingle') !== -1;
   }
-  canDownloadChunked(): boolean {
-    return 'DownloadChunked' in this.capabilities;
+  get canDownloadChunked(): boolean {
+    return this.capabilities.indexOf('DownloadChunked') !== -1;
   }
-  canUploadChunked(): boolean {
-    return 'UploadChunked' in this.capabilities;
+  get canUploadChunked(): boolean {
+    return this.capabilities.indexOf('UploadChunked') !== -1;
   }
-  canAddHost(): boolean {
-    return 'AddHost' in this.capabilities;
+  get canAddHost(): boolean {
+    return this.capabilities.indexOf('AddHost') !== -1;
   }
-  canRemoveHost(): boolean {
-    return 'RemoveHost' in this.capabilities;
+  get canRemoveHost(): boolean {
+    return this.capabilities.indexOf('RemoveHost') !== -1;
+  }
+
+  get isConfigurable(): boolean {
+    return this.canAddHost || this.canRemoveHost;
   }
 
   abstract isPresent(): boolean;
@@ -170,15 +172,3 @@ export abstract class BaseExfilExtension implements ExfilExtension {
   abstract get displayName(): string;
   abstract get description(): string;
 }
-
-export const STORAGES: StorageExtension[] = [
-  {
-    name: 'filesystem',
-    displayName: 'Built-in Filesystem',
-    description:
-      'File storage in the backed server. Files are removed after a configurable amount of time.',
-    isPresent: (config: ApiConfigResponse) =>
-      config.storages.filesystem !== undefined &&
-      config.storages.filesystem !== null,
-  },
-];

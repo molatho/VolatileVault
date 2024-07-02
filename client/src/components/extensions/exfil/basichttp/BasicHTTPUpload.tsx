@@ -537,7 +537,7 @@ export default function BasicHttpUpload({ exfil, storage }: UploadProps) {
                 setUploadInfo(info);
                 setStep(2);
               }}
-              maxFileSize={1}//config?.fileSize}
+              maxFileSize={exfil.getConfig().single_size}//config?.fileSize}
             />
             {step == 2 && uploadInfo != null && (
               <UploadInfoElement info={uploadInfo} />

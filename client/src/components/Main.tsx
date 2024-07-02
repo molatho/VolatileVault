@@ -7,27 +7,15 @@ import {
   CardContent,
   CardMedia,
   Stack,
-  Stepper,
-  StepLabel,
-  Step,
-  StepContent,
-  Box,
-  Button,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
-import Api, { ApiConfigResponse, ApiResponse } from '../utils/Api';
-import Authentication from './Authentication';
-import { snackError } from '../utils/Snack';
-import ModeSelector, { SelectedMode } from './ModeSelector';
+import React, { useState } from 'react';
+import Api, { ApiConfigResponse } from '../utils/Api';
+import { SelectedMode } from './ModeSelector';
 import {
   ExfilDownloadViewProps,
   ExfilExtension,
-  STORAGES,
   StorageExtension,
 } from './extensions/Extension';
-import { initializeExfilExtensions } from './extensions/ExtensionManager';
-import BasicSelector from './BasicSelector';
-import CustomStepLabel from './ui/CustomSteps';
 import BasicWizard from './BasicWizard';
 
 export default function Main() {

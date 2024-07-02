@@ -129,4 +129,21 @@ export default class Api {
       return Promise.reject(Api.fail_from_error(error) as ApiConfigResponse);
     }
   }
+
+  public saveToken() {
+    if (!this.token) throw new Error("Can't save token; token unset!");
+    localStorage.setItem('token', this.token);
+  }
+
+  public getToken(): string | null {
+    const token = localStorage.getItem('token');
+    if (token)
+      this.token = token;
+    return token;
+  }
+
+  public clearToken() {
+    localStorage.removeItem("token");
+    this.token = undefined;
+  }
 }

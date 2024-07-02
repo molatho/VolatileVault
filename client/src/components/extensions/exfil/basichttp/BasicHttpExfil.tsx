@@ -7,7 +7,7 @@ import Api, {
 } from '../../../../utils/Api';
 import {
   BaseExfilExtension,
-  ExfilConfigFn,
+  ConfigFn,
   ExfilDownloadFn,
   ExfilDownloadViewProps,
   ExfilProviderCapabilities,
@@ -26,7 +26,7 @@ export class BasicHttpExfil extends BaseExfilExtension {
       <BasicHttpUpload exfil={this} storage={storage} />
     );
   }
-  get configView(): ExfilConfigFn {
+  get configView(): ConfigFn {
     throw new Error('Method not implemented.');
   }
   get downloadChunkedView(): ExfilDownloadFn {
