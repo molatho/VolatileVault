@@ -234,7 +234,7 @@ function DataInput({ onFinished, maxFileSize }: DataInputProps) {
       <EnterPassword onPasswordEntered={setPassword} confirm />
       {maxFileSize && calcSize(files) > maxFileSize && (
         <Alert severity="warning">
-          <AlertTitle>Maximum file size </AlertTitle>A maximum of{' '}
+          <AlertTitle>Maximum file size </AlertTitle>A maximum of
           {formatSize(maxFileSize)} can be uploaded. The selected files will be
           compressed in the next step, however it may be ineffective when
           handling high-entropy data. You may want to consider selecting fewer
@@ -400,7 +400,8 @@ function ProcessUpload({
     }
 
     addEntry('Upload', 'Starting...');
-    exfil.uploadSingle(storage.name, tmp)
+    exfil
+      .uploadSingle(storage.name, tmp)
       .then((res) => {
         addEntry('Upload', 'Done!', 'success');
         enqueueSnackbar({
@@ -474,7 +475,7 @@ function UploadInfoElement({ info }: UploadInfoElementProps) {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const ownExpiryDate = moment(ownNowDate).add(info.lifeTime, 's');
+      const ownExpiryDate = moment(ownNowDate).add(info.lifeTime, 'ms');
       const timeLeft = moment.duration(ownExpiryDate.diff(moment()));
       setRemaining(moment.utc(timeLeft.asMilliseconds()).format('HH:mm:ss'));
     }, 500);
@@ -507,9 +508,10 @@ export default function BasicHttpUpload({ exfil, storage }: UploadProps) {
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(0);
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null);
-  
 
   const steps = ['Data Input', 'Process & Upload', 'Done'];
+
+  const maxSize = exfil.getConfig().single_size;
 
   const getCurrentStepView = () => {
     switch (step) {
@@ -521,7 +523,7 @@ export default function BasicHttpUpload({ exfil, storage }: UploadProps) {
               setPassword(_password);
               setStep(1);
             }}
-            maxFileSize={1}//config.storages.basichttp.fileSize}
+            maxFileSize={maxSize}
           />
         );
       case 1:
@@ -537,7 +539,7 @@ export default function BasicHttpUpload({ exfil, storage }: UploadProps) {
                 setUploadInfo(info);
                 setStep(2);
               }}
-              maxFileSize={exfil.getConfig().single_size}//config?.fileSize}
+              maxFileSize={maxSize}
             />
             {step == 2 && uploadInfo != null && (
               <UploadInfoElement info={uploadInfo} />

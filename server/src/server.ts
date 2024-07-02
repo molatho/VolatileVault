@@ -10,10 +10,12 @@ import { FileSystemStorageProvider } from './extensions/storage/filesystem';
 import { ExtensionRepository } from './extensions/repository';
 import { BasicHTTPExfilProvider } from './extensions/exfil/basichttp';
 import { Logger } from './logging';
+import { AwsCloudFrontExfilProvider } from './extensions/exfil/awscloudfront';
 
 const EXTENSIONS = [
   new BasicHTTPExfilProvider(),
   new FileSystemStorageProvider(),
+  new AwsCloudFrontExfilProvider()
 ];
 
 const logger = Logger.Instance.defaultLogger;

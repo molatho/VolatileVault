@@ -15,7 +15,7 @@ export class Logger {
   private constructor() {
     this.logger = winston.createLogger({
       defaultMeta: { mainLabel: 'Server' },
-      level: 'info',
+      level: 'debug',
       format: winston.format.combine(
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
         winston.format.align(),

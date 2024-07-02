@@ -123,12 +123,16 @@ export class FsUtils {
   }
 
   public async putFile(data: Readable): Promise<FileInfo> {
+    this.logger.debug('Putting file...');
     const file = await this.db.putFile();
+    this.logger.debug(`File: ${file.id}`);
     var str = fsSync.createWriteStream(path.join(this.dir, file.id), {
       flags: 'w',
       encoding: 'binary',
     });
+    this.logger.debug(`Writing to ${str.path}...`);
     await pipeline(data, str);
+    this.logger.debug('Done!');
     return file;
   }
 

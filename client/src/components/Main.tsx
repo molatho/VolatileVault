@@ -64,6 +64,21 @@ export default function Main() {
     }
   }
 
+  function getModeString() {
+    switch (mode) {
+      case 'UploadSingle':
+        return 'Basic upload';
+      case 'DownloadSingle':
+        return 'Basic download';
+      case 'DownloadChunked':
+        return 'Chunked download';
+      case 'UploadChunked':
+        return 'Chunked upload';
+      default:
+        throw new Error(`Invalid mode ${mode} at this stage!`);
+    }
+  }
+
   return (
     <React.Fragment>
       <CssBaseline />
@@ -82,7 +97,14 @@ export default function Main() {
             {wizardDone === false && (
               <BasicWizard api={api} onFinished={onWizardFinished} />
             )}
-            {wizardDone && getExfilView()}
+            {wizardDone && (
+              <>
+                <Typography variant="h6">
+                  {exfil?.displayName} - {getModeString()}
+                </Typography>
+                {getExfilView()}
+              </>
+            )}
           </CardContent>
         </Card>
       </Container>

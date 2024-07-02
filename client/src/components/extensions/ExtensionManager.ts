@@ -1,4 +1,5 @@
 import Api, { ApiConfigResponse } from '../../utils/Api';
+import Config from '../../utils/Config';
 import { ExfilExtension, StorageExtension } from './Extension';
 import { DummyExfil } from './exfil/DummyExfil';
 import { BasicHttpExfil } from './exfil/basichttp/BasicHttpExfil';
@@ -9,9 +10,12 @@ export function initializeExfilExtensions(
   api: Api,
   config: ApiConfigResponse
 ): ExfilExtension[] {
-  return [new BasicHttpExfil(api, config), new DummyExfil(api, config)];
+  if (Config.DEBUG)
+    return [new BasicHttpExfil(api, config), new DummyExfil(api, config)];
+  else return [new BasicHttpExfil(api, config)];
 }
 
 export function getStorages(): StorageExtension[] {
-  return [new FileSystem(), new DummyStorage()];
+  if (Config.DEBUG) return [new FileSystem(), new DummyStorage()];
+  else return [new FileSystem()];
 }

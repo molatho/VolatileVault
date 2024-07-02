@@ -65,7 +65,9 @@ export class FileSystemStorageProvider
   }
 
   async store(data: StorageData): Promise<StorageInformation> {
+    this.logger.debug(`Storing ${data.size} bytes`);
     const info = await this.fs.putFile(data.stream);
+    this.logger.debug(`Done: ${info.id}`);
     return {
       creationDate: info.creationDate,
       id: info.id,

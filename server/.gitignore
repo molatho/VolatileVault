@@ -2,7 +2,7 @@
 /node_modules
 
 npm-debug.log*
-/files
+/files*
 
 config.yaml
 

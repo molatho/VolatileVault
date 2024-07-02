@@ -77,9 +77,11 @@ export class BasicHTTPExfilProvider
     });
 
     uploadRoute.post(
-      '/api/files/upload/:storage',
+      `/api/${BasicHTTPExfilProvider.NAME}/upload/:storage`,
       async (req: Request, res: Response) => {
-        this.logger.info(`Upload request to ${req.params?.storage ?? "n/a"} from ${req.ip}`);
+        this.logger.info(
+          `Upload request to ${req.params?.storage ?? 'n/a'} from ${req.ip}`
+        );
 
         try {
           // Validate storage param
@@ -93,17 +95,22 @@ export class BasicHTTPExfilProvider
           const body = req.body as Buffer;
           if (!body || !body.length) throw new Error('Missing body');
 
+          this.logger.debug(`Storing using ${storageName}`);
           const result = await this.uploadSingle(storageName, {
             stream: Readable.from(body),
             size: body.length,
           });
 
-          return {
+          this.logger.debug('Store successful!');
+          res.json({
             ...result,
             message: 'Upload successful',
             lifeTime: storage.config.file_expiry * 1000 * 60,
-          };
+          });
         } catch (error) {
+          this.logger.error(
+            `Error: ${error?.message ?? JSON.stringify(error)}`
+          );
           return res.status(400).json({ message: error?.message ?? 'Failure' });
         }
       }
@@ -115,9 +122,11 @@ export class BasicHTTPExfilProvider
     downloadRoute.use(bodyParser.json());
 
     downloadRoute.get(
-      '/api/files/download/:id',
+      `/api/${BasicHTTPExfilProvider.NAME}/download/:id`,
       async (req: Request, res: Response) => {
-        this.logger.info(`Download request for ${req.params?.id ?? "n/a"} from ${req.ip}`);
+        this.logger.info(
+          `Download request for ${req.params?.id ?? 'n/a'} from ${req.ip}`
+        );
 
         try {
           // Validate file id param
@@ -130,13 +139,16 @@ export class BasicHTTPExfilProvider
           // Send
           res.writeHead(200, {
             'Content-Type': 'application/octet-stream',
-            'Content-Length': length.toString(),
+            'Content-Length': data.size.toString(),
           });
 
           for await (const chunk of data.stream) res.write(chunk, 'binary');
 
           res.end();
         } catch (error) {
+          this.logger.error(
+            `Error: ${error?.message ?? JSON.stringify(error)}`
+          );
           return res.status(400).json({ message: error?.message ?? 'Failure' });
         }
       }

