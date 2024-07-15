@@ -26,11 +26,18 @@ interface ChunkData {
 interface TransferData {
   id: string;
   total_size: number;
-  chunks: ChunkData[];
   storage: string;
   hosts: string[];
   creation: Date;
   fs: FsUtils;
+}
+
+interface DownloadTransferData extends TransferData {
+  total_chunks: number;
+}
+
+interface UploadTransferData extends TransferData {
+  chunks: ChunkData[];
 }
 
 const TRANSFER_IDS = new ShortUniqueId({
@@ -45,7 +52,8 @@ export class AwsCloudFrontExfilProvider
   private static NAME: string = 'awscloudfront';
   private logger: winston.Logger;
   private client: CloudFrontWrapper;
-  private transfers: Map<string, TransferData>;
+  private uploads: UploadTransferData[];
+  private downloads: DownloadTransferData[];
   private fs: FsUtils;
 
   public get max_total_size(): number {
@@ -62,7 +70,7 @@ export class AwsCloudFrontExfilProvider
       'UploadChunked',
     ]);
     this.logger = Logger.Instance.createChildLogger('AwsCloudFront');
-    this.transfers = new Map<string, TransferData>();
+    this.uploads = [];
     this.fs = new FsUtils();
   }
 
@@ -76,6 +84,10 @@ export class AwsCloudFrontExfilProvider
       displayName: 'AWS CloudFront',
       info: this.config,
     };
+  }
+
+  public override async installCron(): Promise<void> {
+    return; // TODO: periodically check transfer's creation dates and terminate them if they're too old
   }
 
   async init(cfg: Config): Promise<void> {
@@ -187,7 +199,7 @@ export class AwsCloudFrontExfilProvider
           const storage =
             ExtensionRepository.getInstance().getStorage(storageName);
           const transferId = await this.initChunkUpload(storageName, size);
-          const transferData = this.transfers.get(transferId);
+          const transferData = this.uploads.find((t) => t.id === transferId);
 
           return res.json({
             message: 'Initialization successful',
@@ -220,7 +232,10 @@ export class AwsCloudFrontExfilProvider
           // Validate param
           const transferId = req.params?.transferId;
           if (!transferId) throw new Error(`Invalid transfer ${transferId}`);
-          if (!this.transfers.has(transferId))
+          if (
+            !this.uploads.find((t) => t.id === transferId) &&
+            !this.downloads.find((t) => t.id === transferId)
+          )
             throw new Error(`Unknown transfer ${transferId}`);
 
           const status = await this.client.areDistributionsReady(transferId);
@@ -261,7 +276,7 @@ export class AwsCloudFrontExfilProvider
 
           const transferId = req.params?.transferId;
           if (!transferId) throw new Error(`Invalid transfer ${transferId}`);
-          if (!this.transfers.has(transferId))
+          if (!this.uploads.find((t) => t.id === transferId))
             throw new Error(`Unknown transfer ${transferId}`);
 
           const chunkNo = parseInt(req.params?.chunkNo);
@@ -282,6 +297,8 @@ export class AwsCloudFrontExfilProvider
         }
       }
     );
+
+    // Kick-off a chunked download
   }
 
   async initChunkUpload(storage: string, size: number): Promise<string> {
@@ -306,7 +323,7 @@ export class AwsCloudFrontExfilProvider
       fs: new FsUtils(),
     };
 
-    this.transfers.set(transferId, transfer);
+    this.uploads.push(transfer);
 
     await transfer.fs.init(path.join(this.config.folder, transfer.id));
 
@@ -318,7 +335,7 @@ export class AwsCloudFrontExfilProvider
     chunkNo: number,
     data: BinaryData
   ): Promise<FileRetrievalInformation> {
-    const transfer = this.transfers.get(transferId);
+    const transfer = this.uploads.find((t) => t.id === transferId);
     if (chunkNo < 0 || chunkNo > transfer.chunks.length)
       throw new Error(`Invalid chunk number ${chunkNo}`);
 
