@@ -6,12 +6,10 @@ import {
 } from './provider';
 import { BaseExtension, ExtensionInfo } from '../extension';
 import {
-  BaseExfil,
-  BaseStorage,
   StorageFileSystem,
   Config,
 } from '../../config/config';
-import { FsUtils } from './fs';
+import { FsUtils } from '../../fs';
 import { ExtensionRepository } from '../repository';
 import cron from 'node-cron';
 import winston from 'winston';
@@ -56,7 +54,7 @@ export class FileSystemStorageProvider
     this.cfg = cfg;
 
     if (this.config) {
-      await this.fs.init(this.config);
+      await this.fs.init(this.config.folder);
       this.logger.info('Initialized');
       this.register();
     } else {

@@ -39,15 +39,16 @@ export class BasicHTTPExfilProvider
     };
   }
 
-  init(cfg: Config): Promise<void> {
+  async init(cfg: Config): Promise<void> {
     this.cfg = cfg;
     if (this.config) {
       this.logger.info('Initialized');
       this.register();
+      this.state = 'Initialized';
     } else {
       this.logger.debug('Config not set');
+      this.state = 'Unconfigured';
     }
-    return Promise.resolve();
   }
 
   protected register() {
@@ -64,7 +65,7 @@ export class BasicHTTPExfilProvider
 
     uploadRoute.use(
       bodyParser.raw({
-        limit: this.config.single_size,
+        limit: this.config.max_total_size,
         type: 'application/octet-stream',
       })
     );
@@ -186,19 +187,16 @@ export class BasicHTTPExfilProvider
   }
 
   // Unsupported methods
-  initChunkDownload(info: any): string {
+  initChunkDownload(info: any): Promise<string> {
     throw new Error('Method not supported.');
   }
-  initChunkUpload(storage: string, info: any): string {
+  initChunkUpload(storage: string, size: number): Promise<string> {
     throw new Error('Method not supported.');
   }
-  uploadChunk(
-    storage: string,
-    data: BinaryData
-  ): Promise<FileRetrievalInformation> {
+  uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileRetrievalInformation> {
     throw new Error('Method not supported.');
   }
-  downloadChunk(info: FileInformation): BinaryData {
+  downloadChunk(transferId: string, chunkNo: number): Promise<BinaryData> {
     throw new Error('Method not supported.');
   }
   addHost(): Promise<string> {

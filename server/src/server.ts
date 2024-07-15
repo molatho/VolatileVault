@@ -31,6 +31,11 @@ const main = async (): Promise<void> => {
     await extension.init(ConfigInstance.Inst);
   }
 
+  const failed = EXTENSIONS.filter(e=>e.state == 'InitializationError');
+  if (failed.length > 0) {
+    throw new Error(`The following extension(s) failed to initialize: ${failed.map(f=>f.name).join(", ")}`)
+  }
+
   if (ExtensionRepository.getInstance().exfils.length == 0)
     throw new Error(
       'No exfil provider was initialized: verify that at least one is configured.'

@@ -32,8 +32,8 @@ export interface Exfil {
 }
 
 export interface BaseExfil {
-  single_size?: number;
-  chunk_size?: number;
+  max_total_size?: number;
+  max_chunk_size?: number;
 }
 
 export interface ExfilBasicHTTP extends BaseExfil {
@@ -41,9 +41,13 @@ export interface ExfilBasicHTTP extends BaseExfil {
 }
 
 export interface BaseAwsSettings {
-  accessKeyId: string;
-  secretAccessKey: string;
+  access_key_id: string;
+  secret_access_key: string;
   region: string;
 }
 
-export interface ExfilAwsCloudFront extends BaseExfil, BaseAwsSettings {}
+export interface ExfilAwsCloudFront extends BaseExfil, BaseAwsSettings {
+  distribution_tag: string;
+  domain: string;
+  folder: string;
+}

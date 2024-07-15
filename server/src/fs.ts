@@ -5,8 +5,7 @@ import path from 'path';
 import ShortUniqueId from 'short-unique-id';
 import { pipeline } from 'stream/promises';
 import winston from 'winston';
-import { StorageFileSystem } from '../../config/config';
-import { Logger } from '../../logging';
+import { Logger } from './logging';
 
 export interface FileInfo {
   id: string;
@@ -67,30 +66,22 @@ class InMemoryDatabase implements FsDatabase {
 
 export class FsUtils {
   private db: FsDatabase = new InMemoryDatabase();
-  private _cfg: StorageFileSystem;
+  private dir: string;
   private logger: winston.Logger;
 
   public constructor() {
     this.logger = Logger.Instance.createChildLogger('FileSystem');
   }
 
-  public get cfg(): StorageFileSystem {
-    return this._cfg;
-  }
-
-  private get dir() {
-    return path.resolve(this._cfg.folder);
-  }
-
-  public async init(cfg: StorageFileSystem): Promise<void> {
-    this._cfg = cfg;
+  public async init(dir: string): Promise<void> {
+    this.dir = path.resolve(dir);
 
     if (await this.exists(this.dir)) {
       this.logger.info(`Removing ${this.dir}`);
       await fs.rm(this.dir, { recursive: true, force: true });
     }
     this.logger.info(`Creating ${this.dir}`);
-    await fs.mkdir(this.dir);
+    await fs.mkdir(this.dir, { recursive: true });
   }
 
   private async exists(path: string): Promise<boolean> {
