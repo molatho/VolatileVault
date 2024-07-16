@@ -69,8 +69,8 @@ export class FsUtils {
   private dir: string;
   private logger: winston.Logger;
 
-  public constructor() {
-    this.logger = Logger.Instance.createChildLogger('FileSystem');
+  public constructor(name: string) {
+    this.logger = Logger.Instance.createChildLogger(`FS:${name}`);
   }
 
   public async init(dir: string): Promise<void> {
@@ -107,10 +107,7 @@ export class FsUtils {
     if (!(await this.exists(_path))) throw `File "${_path}" does not exist!`;
 
     var stat = await fs.stat(_path);
-    return [
-      fsSync.createReadStream(_path, { flags: 'r', encoding: 'binary' }),
-      stat.size,
-    ];
+    return [fsSync.createReadStream(_path, { flags: 'r' }), stat.size];
   }
 
   public async putFile(data: Readable): Promise<FileInfo> {

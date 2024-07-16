@@ -41,6 +41,13 @@ export class ExtensionRepository {
     return this._storages.get(name);
   }
 
+  public async getStorageForFile(id: string): Promise<StorageProvider> {
+    for (const storage of ExtensionRepository.getInstance().storages) {
+      if (await storage.has(id)) return storage;
+    }
+    throw new Error('Unknown file');
+  }
+
   public registerExfil(exfil: ExfilProvider): void {
     if (this._exfils.has(exfil.name))
       throw new Error(`Exfil "${exfil.name}" already registered!`);

@@ -174,20 +174,14 @@ export class BasicHTTPExfilProvider
   }
 
   async downloadSingle(info: FileInformation): Promise<BinaryData> {
-    const getStorage = async (): Promise<StorageProvider> => {
-      for (const storage of ExtensionRepository.getInstance().storages) {
-        if (await storage.has(info.id)) return storage;
-      }
-      throw new Error('Unknown storage');
-    };
-
-    const storage = await getStorage();
+    const storage = await ExtensionRepository.getInstance().getStorageForFile(info.id);
     var data = await storage.retrieve({ id: info.id });
+    
     return data;
   }
 
   // Unsupported methods
-  initChunkDownload(info: any): Promise<string> {
+  initChunkDownload(info: FileInformation): Promise<string> {
     throw new Error('Method not supported.');
   }
   initChunkUpload(storage: string, size: number): Promise<string> {

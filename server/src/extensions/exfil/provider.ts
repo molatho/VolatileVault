@@ -75,7 +75,7 @@ export interface ExfilProvider extends Extension<ExfilProviderCapabilities> {
 
   // Chunked up/downloads
   initChunkUpload(storage: string, size: number): Promise<string>; // TODO: Define info type
-  initChunkDownload(info: any): Promise<string>;
+  initChunkDownload(info: FileInformation): Promise<string>;
   uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileRetrievalInformation>;
   downloadChunk(transferId: string, chunkNo: number): Promise<BinaryData>;
 

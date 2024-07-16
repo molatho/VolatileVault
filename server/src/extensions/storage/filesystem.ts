@@ -36,7 +36,7 @@ export class FileSystemStorageProvider
   public constructor() {
     super(FileSystemStorageProvider.NAME, ['None']);
     this.logger = Logger.Instance.createChildLogger('FileSystem');
-    this.fs = new FsUtils();
+    this.fs = new FsUtils(FileSystemStorageProvider.NAME);
   }
   get config(): StorageFileSystem {
     return this.cfg.storage.filesystem;

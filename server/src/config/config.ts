@@ -33,7 +33,7 @@ export interface Exfil {
 
 export interface BaseExfil {
   max_total_size?: number;
-  max_chunk_size?: number;
+  chunk_size?: number;
 }
 
 export interface ExfilBasicHTTP extends BaseExfil {
@@ -46,8 +46,18 @@ export interface BaseAwsSettings {
   region: string;
 }
 
+export type TransferMode = 'Dynamic' | 'Static';
+
+export interface TransferConfig {
+  mode: TransferMode;
+  hosts?: string[];
+  max_dynamic_hosts?: number;
+}
+
 export interface ExfilAwsCloudFront extends BaseExfil, BaseAwsSettings {
   distribution_tag: string;
   domain: string;
   folder: string;
+  upload: TransferConfig;
+  download: TransferConfig;
 }

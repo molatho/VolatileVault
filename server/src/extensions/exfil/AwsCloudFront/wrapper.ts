@@ -90,6 +90,7 @@ export class CloudFrontWrapper {
         this.releaseDomain(distribution.Id);
       }
     } catch (error) {
+      // TODO: Catch ratelimiting error and retry automatically after waiting
       this.logger.error(
         `Error releasing CloudFront domainss: ${error?.message ?? error}`
       );
@@ -203,7 +204,8 @@ export class CloudFrontWrapper {
   ): DistributionConfig {
     var cfg = structuredClone(distributionconfig) as DistributionConfig;
 
-    cfg.CallerReference = `[VolatileVault] ${this.distributionTag} ${transferIdAndCount};`;
+    cfg.CallerReference =
+      cfg.CallerReference = `[VolatileVault] ${this.distributionTag} ${transferIdAndCount};`;
     cfg.DefaultCacheBehavior.TargetOriginId = transferIdAndCount;
     cfg.Origins.Items[0].DomainName = this.domain;
     cfg.Origins.Items[0].Id = transferIdAndCount;
