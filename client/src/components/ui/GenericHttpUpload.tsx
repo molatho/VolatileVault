@@ -24,14 +24,14 @@ import { useDropzone } from 'react-dropzone';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import jszip from 'jszip';
-import { encryptSymmetric } from '../../../../utils/Crypto';
+import { encryptSymmetric } from '../../utils/Crypto';
 import { enqueueSnackbar } from 'notistack';
 import moment from 'moment';
-import EnterPassword from '../../../EnterPassword';
-import { calcSize, formatSize } from '../../../../utils/Files';
-import { fromArrayBuffer } from '../../../../utils/Entropy';
-import { ExfilExtension, StorageExtension } from '../../Extension';
-import EventTable, { EventEntry, createLogEntry } from '../../../ui/EventTable';
+import EnterPassword from '../EnterPassword';
+import { calcSize, formatSize } from '../../utils/Files';
+import { fromArrayBuffer } from '../../utils/Entropy';
+import { ExfilExtension, StorageExtension } from '../extensions/Extension';
+import EventTable, { createLogEntry, EventEntry } from './EventTable';
 
 interface FileSelectionProps {
   onFilesSelected: (files: File[]) => void;
@@ -418,7 +418,7 @@ interface UploadInfoElementProps {
 
 function UploadInfoElement({ info }: UploadInfoElementProps) {
   const [remaining, setRemaining] = useState('00:00:00');
-  const [ownNowDate, setOwnNowDate] = useState(moment());
+  const [ownNowDate, _] = useState(moment());
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -450,7 +450,7 @@ interface UploadProps {
   storage: StorageExtension;
 }
 
-export default function BasicHttpUpload({ exfil, storage }: UploadProps) {
+export default function GenericHttpUpload({ exfil, storage }: UploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(0);
