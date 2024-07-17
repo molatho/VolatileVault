@@ -6,6 +6,8 @@ client/src/compiled/
 quic/env/
 private_key.pem
 public_key.pem
+cert.pem
+key.pem
 bin/
 obj/
 extensions/quic/env/
