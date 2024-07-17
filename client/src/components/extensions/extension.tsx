@@ -74,19 +74,11 @@ export interface ExfilExtension extends BasicInfoHolder {
     data: ArrayBuffer,
     reportEvent?: ReportEvent
   ) => Promise<ApiUploadResponse>;
-  initChunkDownload: (
-    storage: string,
-    reportEvent?: ReportEvent
-  ) => Promise<ApiResponse>;
-  initChunkUpload: (
-    storage: string,
-    reportEvent?: ReportEvent
-  ) => Promise<ApiResponse>; // TODO: Define info type
-  downloadChunk: (
+  downloadChunked: (
     id: string,
     reportEvent?: ReportEvent
   ) => Promise<ApiDownloadResponse>;
-  uploadChunk: (
+  uploadChunked: (
     storage: string,
     data: ArrayBuffer,
     reportEvent?: ReportEvent
@@ -147,19 +139,11 @@ export abstract class BaseExfilExtension implements ExfilExtension {
     data: ArrayBuffer,
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiUploadResponse>;
-  abstract initChunkDownload(
-    storage: string,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiResponse>;
-  abstract initChunkUpload(
-    storage: string,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiResponse>;
-  abstract downloadChunk(
+  abstract downloadChunked(
     id: string,
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiDownloadResponse>;
-  abstract uploadChunk(
+  abstract uploadChunked(
     storage: string,
     data: ArrayBuffer,
     reportEvent?: ReportEvent | undefined

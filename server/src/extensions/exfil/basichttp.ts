@@ -6,7 +6,6 @@ import { Config, ExfilBasicHTTP } from '../../config/config';
 import { BaseExtension, ExtensionInfo } from '../extension';
 import { ExtensionRepository } from '../repository';
 import { Logger } from '../../logging';
-import { StorageProvider } from '../storage/provider';
 import {
   BinaryData,
   ExfilProvider,

@@ -28,15 +28,28 @@ export interface ApiConfigResponse extends ApiResponse {
 
 export interface ApiConfigExfilsCollection {
   basichttp?: ApiConfigItem<ApiConfigBasicHTTPExfil>;
+  awscloudfront?: ApiConfigItem<ApiConfigAwsCloudFrontExfil>;
 }
 
 export interface ApiConfigBaseExfil {
-  single_size?: number;
+  max_total_size?: number;
   chunk_size?: number;
 }
 
 export interface ApiConfigBasicHTTPExfil extends ApiConfigBaseExfil {
   hosts: string[];
+}
+
+export type AwsCloudFrontTransferMode = 'Dynamic' | 'Static';
+
+export interface AwsCloudFrontTransferConfig {
+  mode: AwsCloudFrontTransferMode;
+  hosts?: string[];
+}
+
+export interface ApiConfigAwsCloudFrontExfil extends ApiConfigBaseExfil {
+  upload: AwsCloudFrontTransferConfig;
+  download: AwsCloudFrontTransferConfig;
 }
 
 export interface ApiConfigStorageCollection {

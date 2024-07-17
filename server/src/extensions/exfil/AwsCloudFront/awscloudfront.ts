@@ -22,7 +22,7 @@ import {
   FileInformation,
   FileRetrievalInformation,
 } from '../provider';
-import { StorageProvider } from 'src/extensions/storage/provider';
+import cors from 'cors';
 
 interface ChunkData {
   chunkId: number;
@@ -93,7 +93,18 @@ export class AwsCloudFrontExfilProvider
     return {
       name: AwsCloudFrontExfilProvider.NAME,
       displayName: 'AWS CloudFront',
-      info: this.config,
+      info: {
+        max_total_size: this.config.max_total_size,
+        chunk_size: this.config.chunk_size,
+        upload: {
+          mode: this.config.upload.mode,
+          hosts: this.config.upload.hosts,
+        },
+        download: {
+          mode: this.config.download.mode,
+          hosts: this.config.download.hosts,
+        },
+      },
     };
   }
 
@@ -157,6 +168,7 @@ export class AwsCloudFrontExfilProvider
       // }
 
       this.logger.info('Initialized & validated credentials');
+      await this.client.getCachePolicyId();
       this.register();
       this.state = 'Initialized';
     } else {
@@ -170,8 +182,16 @@ export class AwsCloudFrontExfilProvider
   }
 
   get hosts(): Promise<string[]> {
-    // TODO: List distributions here!
-    throw new Error('Method not implemented');
+    const staticUploads = this.config.upload.hosts ?? [];
+    const staticDownloads = this.config.download.hosts ?? [];
+    const assignedUploads = this.uploads.map((u) => u.hosts).flat();
+    const assignedDownloads = this.downloads.map((u) => u.hosts).flat();
+    return Promise.resolve(
+      staticUploads
+        .concat(staticDownloads)
+        .concat(assignedUploads)
+        .concat(assignedDownloads)
+    );
   }
 
   async installRoutes(app: Express): Promise<void> {
@@ -234,13 +254,16 @@ export class AwsCloudFrontExfilProvider
           // Validate param
           const transferId = req.params?.transferId;
           if (!transferId) throw new Error(`Invalid transfer ${transferId}`);
-          if (
-            !this.uploads.find((t) => t.id === transferId) &&
-            !this.downloads.find((t) => t.id === transferId)
-          )
+          const upload = this.uploads.find((t) => t.id === transferId);
+          const download = this.downloads.find((t) => t.id === transferId);
+          if (!upload && !download)
             throw new Error(`Unknown transfer ${transferId}`);
 
-          const status = await this.client.areDistributionsReady(transferId);
+          const status =
+            (upload && this.config.upload.mode == 'Static') ||
+            (download && this.config.download.mode == 'Static')
+              ? true
+              : await this.client.areDistributionsReady(transferId);
 
           return res.json({ message: 'Request successful', status });
         } catch (error) {
@@ -386,7 +409,7 @@ export class AwsCloudFrontExfilProvider
 
     const terminateDownload = express.Router();
     terminateDownload.post(
-      `/api/${AwsCloudFrontExfilProvider.NAME}/initdownload/:id`,
+      `/api/${AwsCloudFrontExfilProvider.NAME}/download/terminate/:id`,
       async (req: Request, res: Response) => {
         this.logger.info(
           `Termination of ${req.params?.transferId ?? 'n/a'} requested from ${
@@ -414,6 +437,8 @@ export class AwsCloudFrontExfilProvider
           // Release domains
           if (this.config.download.mode == 'Dynamic')
             await this.client.releaseDistributions(transferId);
+
+          return res.json({ message: 'Termination successful' });
         } catch (error) {
           this.logger.error(
             `Error: ${error?.message ?? JSON.stringify(error)}`

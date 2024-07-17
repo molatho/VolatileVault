@@ -15,7 +15,7 @@ import { AwsCloudFrontExfilProvider } from './extensions/exfil/AwsCloudFront/aws
 const EXTENSIONS = [
   new BasicHTTPExfilProvider(),
   new FileSystemStorageProvider(),
-  new AwsCloudFrontExfilProvider()
+  new AwsCloudFrontExfilProvider(),
 ];
 
 const logger = Logger.Instance.defaultLogger;
@@ -31,9 +31,13 @@ const main = async (): Promise<void> => {
     await extension.init(ConfigInstance.Inst);
   }
 
-  const failed = EXTENSIONS.filter(e=>e.state == 'InitializationError');
+  const failed = EXTENSIONS.filter((e) => e.state == 'InitializationError');
   if (failed.length > 0) {
-    throw new Error(`The following extension(s) failed to initialize: ${failed.map(f=>f.name).join(", ")}`)
+    throw new Error(
+      `The following extension(s) failed to initialize: ${failed
+        .map((f) => f.name)
+        .join(', ')}`
+    );
   }
 
   if (ExtensionRepository.getInstance().exfils.length == 0)
@@ -51,7 +55,18 @@ const main = async (): Promise<void> => {
   app.disable('x-powered-by');
 
   app.use(nocache());
-  app.use(cors()); // TODO: Disable in prod!
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        Promise.all(
+          ExtensionRepository.getInstance().exfils.map((e) => e.hosts)
+        ).then((all) => cb(null, all.flat()));
+      },
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type'],
+      credentials: true,
+    })
+  ); // TODO: Disable in prod!
 
   app.use(bodyParser.urlencoded({ extended: false }));
 

@@ -22,15 +22,18 @@ import { saveAs } from 'file-saver';
 import jszip from 'jszip';
 import moment from 'moment';
 import { ExfilExtension } from '../extensions/Extension';
+import { SelectedMode } from '../ModeSelector';
 
 interface DownloadBlobProps {
   exfil: ExfilExtension;
+  mode: SelectedMode;
   enabled?: boolean;
   onDownloaded: (id: string, blob: ArrayBuffer) => void;
 }
 
 function DownloadBlob({
   exfil,
+  mode,
   enabled = true,
   onDownloaded,
 }: DownloadBlobProps) {
@@ -52,7 +55,11 @@ function DownloadBlob({
     setCanEdit(false);
     setDownloadError('');
     try {
-      const res = await exfil.downloadSingle(id);
+      //TODO: add EventTable!
+      const res =
+        mode == 'DownloadSingle'
+          ? await exfil.downloadSingle(id)
+          : await exfil.downloadChunked(id);
 
       enqueueSnackbar({
         message: `Downloaded ${formatSize(res.data.byteLength)} of data!`,
@@ -101,9 +108,10 @@ function DownloadBlob({
 
 interface DownloadProps {
   exfil: ExfilExtension;
+  mode: SelectedMode;
 }
 
-export default function GenericHttpDownload({ exfil }: DownloadProps) {
+export default function GenericHttpDownload({ exfil, mode }: DownloadProps) {
   interface FileInfo {
     name: string;
     date: Date;
@@ -114,6 +122,9 @@ export default function GenericHttpDownload({ exfil }: DownloadProps) {
   const [canDecrypt, setCanDecrypt] = useState(true);
   const [isDecrypted, setIsDecrypted] = useState(false);
   const [files, setFiles] = useState<FileInfo[]>([]);
+
+  if (mode != 'DownloadChunked' && mode != 'DownloadSingle')
+    throw new Error(`Unsupported mode ${mode}`);
 
   const doDecrypt = () => {
     setCanDecrypt(false);
@@ -169,6 +180,7 @@ export default function GenericHttpDownload({ exfil }: DownloadProps) {
     <Stack direction="column" spacing={4} mt={2}>
       <DownloadBlob
         exfil={exfil}
+        mode={mode}
         onDownloaded={(id, blob) => {
           setBlob(blob);
           setId(id);

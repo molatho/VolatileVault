@@ -1,5 +1,8 @@
 import {
+  CachePolicySummary,
   CloudFront,
+  CreateCachePolicyCommand,
+  CreateCachePolicyRequest,
   CreateDistributionCommand,
   CreateDistributionRequest,
   DeleteDistributionCommand,
@@ -7,6 +10,7 @@ import {
   DistributionSummary,
   GetDistributionCommand,
   GetDistributionResult,
+  ListCachePoliciesCommand,
   ListDistributionsCommand,
   UpdateDistributionCommand,
 } from '@aws-sdk/client-cloudfront';
@@ -19,6 +23,7 @@ export class CloudFrontWrapper {
   private logger: winston.Logger;
   private distributionTag: string;
   private domain: string;
+  private cachePolicyId: string;
 
   public constructor(
     accessKeyId: string,
@@ -79,6 +84,65 @@ export class CloudFrontWrapper {
     } while (marker);
 
     return distributionSummaries;
+  }
+
+  public async getCachePolicyId(): Promise<void> {
+    this.cachePolicyId = await this.getOrCreateCachePolicy();
+  }
+
+  private async getOrCreateCachePolicy(): Promise<string> {
+    const policyName = 'VolatileVault-IncludeAuthorizationHeaderPolicy';
+
+    // Check if the cache policy already exists
+    const existingPolicyId = await this.findCachePolicyIdByName(policyName);
+    if (existingPolicyId) {
+      return existingPolicyId;
+    }
+
+    // Create a new cache policy
+    const policyConfig: CreateCachePolicyRequest = {
+      CachePolicyConfig: {
+        Name: policyName,
+        DefaultTTL: 86400, // One day
+        MaxTTL: 31536000, // One year
+        MinTTL: 0,
+        ParametersInCacheKeyAndForwardedToOrigin: {
+          EnableAcceptEncodingBrotli: true,
+          EnableAcceptEncodingGzip: true,
+          HeadersConfig: {
+            HeaderBehavior: 'whitelist',
+            Headers: {
+              Quantity: 1,
+              Items: ['Authorization'],
+            },
+          },
+          CookiesConfig: {
+            CookieBehavior: 'none', 
+          },
+          QueryStringsConfig: {
+            QueryStringBehavior: 'none',
+          },
+        }, 
+      },
+    };
+
+    const command = new CreateCachePolicyCommand(policyConfig);
+    const response = await this.client.send(command);
+
+    return response.CachePolicy?.Id!;
+  }
+
+  private async findCachePolicyIdByName(
+    policyName: string
+  ): Promise<string | undefined> {
+    const command = new ListCachePoliciesCommand({});
+    const response = await this.client.send(command);
+
+    const policy = response.CachePolicyList?.Items?.find(
+      (item: CachePolicySummary) =>
+        item.CachePolicy?.CachePolicyConfig?.Name === policyName
+    );
+    return policy?.CachePolicy?.Id;
   }
 
   public async releaseDistributions(transferId: string): Promise<void> {
@@ -209,6 +273,7 @@ export class CloudFrontWrapper {
     cfg.DefaultCacheBehavior.TargetOriginId = transferIdAndCount;
     cfg.Origins.Items[0].DomainName = this.domain;
     cfg.Origins.Items[0].Id = transferIdAndCount;
+    cfg.DefaultCacheBehavior.CachePolicyId = this.cachePolicyId;
 
     return cfg;
   }
