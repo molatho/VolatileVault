@@ -11,9 +11,9 @@ namespace QuicClient
 {
     class Client
     {
-        private const string SERVER_ADDRESS = "localhost";
+        private const string SERVER_ADDRESS = "172.24.235.198";
         private const int SERVER_PORT = 1235;
-        private const string JWT_TOKEN = "fhPgRAsSpRSDx5ifFJzK";  // Replace with your actual JWT token
+        private const string JWT_TOKEN = "";
 
         static async Task Main(string[] args)
         {
@@ -23,12 +23,12 @@ namespace QuicClient
                 return;
             }
 
-            var ipAddress = IPAddress.Loopback;
-            Console.WriteLine($"Local IP Address: {ipAddress}");
+            IPAddress ip;
+            IPAddress.TryParse(SERVER_ADDRESS, out ip);
 
             var clientOptions = new QuicClientConnectionOptions
             {
-                RemoteEndPoint = new IPEndPoint(ipAddress, SERVER_PORT),
+                RemoteEndPoint = new IPEndPoint(ip, SERVER_PORT),
                 ClientAuthenticationOptions = new SslClientAuthenticationOptions
                 {
                     TargetHost = SERVER_ADDRESS,
@@ -90,7 +90,7 @@ namespace QuicClient
                 var connection = await QuicConnection.ConnectAsync(clientOptions);
                 var outgoingStream = await connection.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
                 
-                var testMessage = new { action = "upload", storage = "testStorage", data = message, token = JWT_TOKEN };
+                var testMessage = new { action = "upload", storage = "filesystem", data = message, token = JWT_TOKEN };
                 await SendMessageInternal(outgoingStream, testMessage);
 
                 var response = await ReceiveMessage(outgoingStream);

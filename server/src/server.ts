@@ -11,13 +11,11 @@ import { ExtensionRepository } from './extensions/repository';
 import { BasicHTTPExfilProvider } from './extensions/exfil/basichttp';
 import { Logger } from './logging';
 import { AwsCloudFrontExfilProvider } from './extensions/exfil/awscloudfront';
-import { QuicExfilProvider } from './extensions/exfil/quic';
 
 const EXTENSIONS = [
   new BasicHTTPExfilProvider(),
   new FileSystemStorageProvider(),
   new AwsCloudFrontExfilProvider(),
-  new QuicExfilProvider()
 ];
 
 const logger = Logger.Instance.defaultLogger;
@@ -87,8 +85,9 @@ const main = async (): Promise<void> => {
   }
 
   const PORT = ConfigInstance.Inst.general.port || 3000;
-  app.listen(PORT, () => {
-    logger.info(`Application started on port ${PORT}!`);
+  const IP = ConfigInstance.Inst.general.ip || '0.0.0.0';
+  app.listen(PORT, IP, () => {
+    logger.info(`Application started on port ${IP}:${PORT}!`);
   });
 };
 

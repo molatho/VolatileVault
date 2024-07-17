@@ -16,7 +16,7 @@ namespace QuicServer
     class Server
     {
         private const int PORT = 1235;
-        private const string NODEJS_BACKEND_URL = "http://localhost:1234";
+        private const string NODEJS_BACKEND_URL = "http://192.168.1.20:1234";
 
         static async Task Main(string[] args)
         {
@@ -50,7 +50,7 @@ namespace QuicServer
             var listener = await QuicListener.ListenAsync(new QuicListenerOptions
             {
                 // Listening endpoint, port 0 means any port.
-                ListenEndPoint = new IPEndPoint(IPAddress.Loopback, PORT),
+                ListenEndPoint = new IPEndPoint(IPAddress.Any, PORT),
                 // List of all supported application protocols by this listener.
                 ApplicationProtocols = new List<SslApplicationProtocol>() { new SslApplicationProtocol("h3") },
                 // Callback to provide options for the incoming connections, it gets called once per each connection.
@@ -142,7 +142,7 @@ namespace QuicServer
                 };
 
                 try{
-                    var response = await PostRequestAsync($"{NODEJS_BACKEND_URL}/api/quic/upload/{storage}", data, headers);
+                    var response = await PostRequestAsync($"{NODEJS_BACKEND_URL}/api/basichttp/upload/{storage}", data, headers);
                     await SendResponse(stream, response);
                 }catch(Exception ex){
                     await SendErrorResponse(stream, ex.Message);
@@ -167,7 +167,7 @@ namespace QuicServer
                     { "Authorization", $"Bearer {token}" }
                 };
 
-                var response = await GetRequestAsync($"{NODEJS_BACKEND_URL}/api/quic/download/{fileId}", headers);
+                var response = await GetRequestAsync($"{NODEJS_BACKEND_URL}/api/basichttp/download/{fileId}", headers);
                 await SendResponse(stream, response);
             }
             else

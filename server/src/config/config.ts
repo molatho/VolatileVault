@@ -5,6 +5,7 @@ export interface Config {
 }
 
 export interface General {
+  ip: string;
   port: number;
   totp_secret: string;
   jwt_expiry: number;
