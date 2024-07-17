@@ -409,7 +409,7 @@ export class AwsCloudFrontExfilProvider
 
     const terminateDownload = express.Router();
     terminateDownload.post(
-      `/api/${AwsCloudFrontExfilProvider.NAME}/download/terminate/:id`,
+      `/api/${AwsCloudFrontExfilProvider.NAME}/download/terminate/:transferId`,
       async (req: Request, res: Response) => {
         this.logger.info(
           `Termination of ${req.params?.transferId ?? 'n/a'} requested from ${

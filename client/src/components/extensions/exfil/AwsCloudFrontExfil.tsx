@@ -131,7 +131,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
       });
 
       // Terminate download
-      await this.terminateDownload(initChunkedData.hosts[0], id);
+      await this.terminateDownload(initChunkedData.hosts[0], initChunkedData.id);
 
       return Api.success_from_data({ data: allChunks }) as ApiDownloadResponse;
     } catch (error) {
@@ -157,6 +157,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
     throw new Error('Method not supported.');
   }
 
+  static PROTO = window.location.protocol;
   async initChunkedDownload(id: string): Promise<InitChunkedResponse> {
     const cfg = this.getConfig();
     const host =
@@ -168,14 +169,15 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
 
     try {
       const res = await axios.post(
-        `//${host}/api/${this.name}/initdownload/${id}`,
+        `/api/${this.name}/initdownload/${id}`,
         {},
         {
           headers: {
             Authorization: `Bearer ${this.api.token}`,
           },
           responseType: 'json',
-          withCredentials: true
+          withCredentials: true,
+          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`
         }
       );
 
@@ -184,9 +186,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
           Api.fail_from_error(undefined, 'Failed to download data')
         );
 
-      return Api.success_from_data({
-        data: res.data,
-      }) as InitChunkedResponse;
+      return Api.success_from_data(res.data) as InitChunkedResponse;
     } catch (error) {
       return Promise.reject(
         Api.fail_from_error(
@@ -204,13 +204,14 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
   ): Promise<ApiDownloadResponse> {
     try {
       const res = await axios.get(
-        `https://${host}/api/${this.name}/download/${transferId}/chunk/${chunkNo}`,
+        `/api/${this.name}/download/${transferId}/chunk/${chunkNo}`,
         {
           headers: {
             Authorization: `Bearer ${this.api.token}`,
           },
           responseType: 'arraybuffer',
-          withCredentials: true
+          withCredentials: true,
+          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`
         }
       );
 
@@ -238,13 +239,14 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
   ): Promise<TransferStatusResponse> {
     try {
       const res = await axios.get(
-        `${host}/api/${this.name}/status/${transferId}`,
+        `/api/${this.name}/status/${transferId}`,
         {
           headers: {
             Authorization: `Bearer ${this.api.token}`,
           },
           responseType: 'json',
-          withCredentials: true
+          withCredentials: true,
+          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`
         }
       );
 
@@ -253,9 +255,9 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
           Api.fail_from_error(undefined, 'Failed to download data')
         );
 
-      return Api.success_from_data({
-        data: res.data,
-      }) as TransferStatusResponse;
+      return Api.success_from_data(
+        res.data,
+      ) as TransferStatusResponse;
     } catch (error) {
       return Promise.reject(
         Api.fail_from_error(
@@ -269,14 +271,15 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
   async terminateDownload(host: string, transferId: string): Promise<ApiResponse> {
     try {
       const res = await axios.post(
-        `https://${host}/api/${this.name}/download/terminate/${transferId}`,
+        `/api/${this.name}/download/terminate/${transferId}`,
         {},
         {
           headers: {
             Authorization: `Bearer ${this.api.token}`,
           },
           responseType: 'json',
-          withCredentials: true
+          withCredentials: true,
+          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`
         }
       );
 
