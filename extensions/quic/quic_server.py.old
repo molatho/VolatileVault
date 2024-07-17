@@ -1,0 +1,86 @@
+import asyncio
+import logging
+import json
+from aioquic.asyncio import serve
+from aioquic.asyncio.protocol import QuicConnectionProtocol
+from aioquic.quic.configuration import QuicConfiguration
+from aioquic.quic.events import HandshakeCompleted, StreamDataReceived
+from jwt_utils import jwt_handler  # Import the JWTHandler class
+
+logging.basicConfig(level=logging.INFO)
+
+class QuicServerProtocol(QuicConnectionProtocol):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def stream_handler(self, stream_id: int, data: bytes):
+        try:
+            message = json.loads(data.decode())
+            token = message.get("token")
+            if not token:
+                response = {"status": "error", "message": "No token provided"}
+                self._quic.send_stream_data(stream_id, json.dumps(response).encode())
+                return
+
+            payload = jwt_handler.decode(token)
+            if not payload:
+                response = {"status": "error", "message": "Invalid or expired token"}
+                self._quic.send_stream_data(stream_id, json.dumps(response).encode())
+                return
+
+            action = message.get("action")
+            if action == "upload":
+                await self.handle_upload(stream_id, message)
+            elif action == "download":
+                await self.handle_download(stream_id, message)
+            else:
+                response = {"status": "error", "message": "Unknown action"}
+                self._quic.send_stream_data(stream_id, json.dumps(response).encode())
+                
+        except Exception as e:
+            logging.error(f"Error handling stream: {e}")
+            response = {"status": "error", "message": str(e)}
+            self._quic.send_stream_data(stream_id, json.dumps(response).encode())
+
+    async def handle_upload(self, stream_id: int, message: dict):
+        try:
+            storage = message["storage"]
+            data = message["data"]
+            with open(f"./uploads/{storage}", "wb") as f:
+                f.write(data.encode())
+            response = {"status": "success", "id": storage}
+            self._quic.send_stream_data(stream_id, json.dumps(response).encode())
+        except Exception as e:
+            logging.error(f"Upload failed: {e}")
+            response = {"status": "error", "message": "Upload failed"}
+            self._quic.send_stream_data(stream_id, json.dumps(response).encode())
+
+    async def handle_download(self, stream_id: int, message: dict):
+        try:
+            file_id = message["id"]
+            with open(f"./uploads/{file_id}", "rb") as f:
+                data = f.read()
+            response = {"status": "success", "data": data.decode()}
+            self._quic.send_stream_data(stream_id, json.dumps(response).encode())
+        except Exception as e:
+            logging.error(f"Download failed: {e}")
+            response = {"status": "error", "message": "Download failed"}
+            self._quic.send_stream_data(stream_id, json.dumps(response).encode())
+
+    def quic_event_received(self, event):
+        if isinstance(event, HandshakeCompleted):
+            self._quic.send_stream_data(0, b"Welcome to the QUIC server!\n")
+        elif isinstance(event, StreamDataReceived):
+            asyncio.ensure_future(self.stream_handler(event.stream_id, event.data))
+
+async def main():
+    configuration = QuicConfiguration(is_client=False)
+    configuration.load_cert_chain(certfile="cert.pem", keyfile="key.pem")
+
+    await serve("localhost", 4433, configuration=configuration, create_protocol=QuicServerProtocol)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

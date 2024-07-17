@@ -2,7 +2,7 @@ import Api, { ApiConfigResponse } from '../../utils/Api';
 import Config from '../../utils/Config';
 import { ExfilExtension, StorageExtension } from './Extension';
 import { DummyExfil } from './exfil/DummyExfil';
-import { BasicHttpExfil } from './exfil/basichttp/BasicHttpExfil';
+import { BasicHttpExfil } from './exfil/basichttp/BasicHTTPExfil';
 import { DummyStorage } from './storage/DummyStorage';
 import { FileSystem } from './storage/FileSystem';
 

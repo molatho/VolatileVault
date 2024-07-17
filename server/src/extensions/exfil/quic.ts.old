@@ -1,0 +1,188 @@
+import { Express } from 'express';
+import winston from 'winston';
+import { Config, ExfilQuic } from '../../config/config';
+import { BaseExtension, ExtensionInfo } from '../extension';
+import { ExtensionRepository } from '../repository';
+import { Logger } from '../../logging';
+import { StorageProvider } from '../storage/provider';
+//import quic from 'node-quic';
+import quic from 'quic';
+import jwt from 'jsonwebtoken';
+import http3 from 'http3';
+
+import {
+  BinaryData,
+  ExfilProvider,
+  ExfilProviderCapabilities,
+  FileInformation,
+  FileRetrievalInformation,
+} from './provider';
+import { Keys } from '../../jwt';
+
+export class QuicExfilProvider
+  extends BaseExtension<ExfilProviderCapabilities>
+  implements ExfilProvider
+{
+  private static NAME: string = 'quic';
+  private logger: winston.Logger;
+  private quicServer: any;
+
+  public constructor() {
+    super(QuicExfilProvider.NAME, ['DownloadSingle', 'UploadSingle']);
+    this.logger = Logger.Instance.createChildLogger('Quic');
+  }
+
+  get config(): ExfilQuic {
+    return this.cfg.exfil.quic;
+  }
+
+  get clientConfig(): ExtensionInfo {
+    return {
+      name: QuicExfilProvider.NAME,
+      displayName: 'Built-in QUIC',
+      info: this.config,
+    };
+  }
+
+  init(cfg: Config): Promise<void> {
+    this.cfg = cfg;
+    if (this.config) {
+      quic.Server
+      this.quicServer = null;
+      // this.quicServer = createQuicSocket({
+      //   endpoint: { port: this.port },
+      //   key: this.key,
+      //   cert: this.cert,
+      // });
+
+      this.logger.info('Initialized');
+      this.register();
+    } else {
+      this.logger.debug('Config not set');
+    }
+    return Promise.resolve();
+  }
+
+  protected register() {
+    ExtensionRepository.getInstance().registerExfil(this);
+  }
+
+  get port(): Promise<number> {
+    return Promise.resolve(this.config.port);
+  }
+
+  get cert(): Promise<string> {
+    return Promise.resolve(this.config.cert);
+  }
+
+  get key(): Promise<string> {
+    return Promise.resolve(this.config.key);
+  }
+
+  get hosts(): Promise<string[]> {
+    return Promise.resolve(this.config.hosts);
+  }
+
+  isValidateToken(token: string, stream): boolean {
+    // Validate JWT
+    if (!token) {
+      stream.write(JSON.stringify({ status: 'error', message: 'No token provided' }));
+      return false;
+    }
+
+    try {
+      jwt.verify(token, Keys.getInstance().publicKey, { algorithms: ['RS512'] });
+    }
+    catch (e) {
+      this.logger.error(`Invalid token: ${e}`);
+      stream.write(JSON.stringify({ status: 'error', message: 'Invalid token' }));
+      return false;
+    }
+    return true;
+  }
+
+
+  async installServer(): Promise<void> {
+    await this.quicServer.listen({ port: this.port });
+    this.logger.info(`QUIC server is listening on port ${this.port}`);
+
+    this.quicServer.on('session', (session) => {
+      session.on('stream', (stream) => {
+        stream.setEncoding('utf8');
+        stream.on('data', async (data) => {
+          this.logger.info(`Received data: ${data}`);
+          const request = JSON.parse(data);
+
+          if(!this.isValidateToken(request.token, stream))
+            return;
+
+          if (request.action === 'upload') {
+            const { storage, data: fileData } = request;
+            const result = await this.uploadSingle(storage, fileData);
+            stream.write(JSON.stringify(result));
+          } else if (request.action === 'download') {
+            const { id } = request;
+            const result = await this.downloadSingle(id);
+            stream.write(JSON.stringify(result));
+          }
+        });
+      });
+    });
+
+    return Promise.resolve();
+  }
+
+  installRoutes(app: Express): Promise<void> {
+    throw new Error('Method not supported.');
+  }
+
+  async uploadSingle(
+    storageName: string,
+    data: BinaryData
+  ): Promise<FileRetrievalInformation> {
+    // Validate specified storage
+    var storage = ExtensionRepository.getInstance().getStorage(storageName);
+
+    // Store file
+    var file = await storage.store(data);
+    return {
+      id: file.id,
+    };
+  }
+
+  async downloadSingle(info: FileInformation): Promise<BinaryData> {
+    const getStorage = async (): Promise<StorageProvider> => {
+      for (const storage of ExtensionRepository.getInstance().storages) {
+        if (await storage.has(info.id)) return storage;
+      }
+      throw new Error('Unknown storage');
+    };
+
+    const storage = await getStorage();
+    var data = await storage.retrieve({ id: info.id });
+    return data;
+  }
+
+  // Unsupported methods
+  initChunkDownload(info: any): string {
+    throw new Error('Method not supported.');
+  }
+  initChunkUpload(storage: string, info: any): string {
+    throw new Error('Method not supported.');
+  }
+  uploadChunk(
+    storage: string,
+    data: BinaryData
+  ): Promise<FileRetrievalInformation> {
+    throw new Error('Method not supported.');
+  }
+  downloadChunk(info: FileInformation): BinaryData {
+    throw new Error('Method not supported.');
+  }
+  addHost(): Promise<string> {
+    throw new Error('Method not supported.');
+  }
+  removeHost(host: string): Promise<void> {
+    throw new Error('Method not supported.');
+  }
+}

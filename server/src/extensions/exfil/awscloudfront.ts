@@ -71,6 +71,10 @@ export class AwsCloudFrontExfilProvider
     throw new Error('Method not implemented');
   }
 
+  installServer(): Promise<void> {
+    throw new Error('Method not supported.');
+  }
+  
   installRoutes(app: Express): Promise<void> {
     throw new Error('Method not implemented.');
   }

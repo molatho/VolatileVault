@@ -29,6 +29,14 @@ export interface StorageAwsS3 extends BaseStorage, BaseAwsSettings {}
 export interface Exfil {
   basichttp?: ExfilBasicHTTP;
   awscloudfront?: ExfilAwsCloudFront;
+  quic?: ExfilQuic;
+}
+
+export interface ExfilQuic extends BaseExfil {
+  key: string;
+  cert: string;
+  port: number;
+  hosts: string[];
 }
 
 export interface BaseExfil {

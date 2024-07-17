@@ -1,0 +1,4 @@
+aioquic
+pyjwt
+requests
+cryptography

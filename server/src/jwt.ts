@@ -1,5 +1,6 @@
 import { expressjwt } from 'express-jwt';
 import { generateKeyPairSync } from 'crypto';
+const fs = require('fs');
 
 export class Keys {
   private static instance: Keys = null;
@@ -12,10 +13,7 @@ export class Keys {
     return this.pubKey;
   }
 
-  public static getInstance(): Keys {
-    if (Keys.instance != null) return Keys.instance;
-    Keys.instance = new Keys();
-    
+  private constructor() {
     const res = generateKeyPairSync('rsa', {
       modulusLength: 4096,
       publicKeyEncoding: {
@@ -27,12 +25,23 @@ export class Keys {
         format: 'pem',
       },
     });
-    Keys.instance.privKey = res.privateKey;
-    Keys.instance.pubKey = res.publicKey;
+    this.privKey = res.privateKey;
+    this.pubKey = res.publicKey;
 
+    // Store the keys on disk
+    fs.writeFileSync('private_key.pem', res.privateKey);
+    fs.writeFileSync('public_key.pem', res.publicKey);
+  }
+
+  public static getInstance(): Keys {
+    if (Keys.instance == null) {
+      Keys.instance = new Keys();
+    }
     return Keys.instance;
   }
 }
+
+const keysInstance = Keys.getInstance();
 
 export const jwt = expressjwt({
   secret: Keys.getInstance().publicKey,

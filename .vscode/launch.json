@@ -5,6 +5,49 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": ".NET Core QuicServer (console)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/extensions/QuicServer/bin/Debug/net8.0/QuicServer.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/extensions/QuicServer",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "logging": {
+              "moduleLoad": false
+            },
+            "internalConsoleOptions": "openOnSessionStart",
+            "env": {
+              "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "C#: QuickClient Debug",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/extensions/QuicClient/QuicClient.csproj"
+        },
+        {
+            "name": "Quic Server",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/quic/env/Scripts/python.exe",
+            "cwd": "${workspaceFolder}/quic",
+            "program": "quic_server.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Quic Client",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/quic/env/Scripts/python.exe",
+            "cwd": "${workspaceFolder}/quic",
+            "program": "quic_client.py",
+            "console": "integratedTerminal"
+        },
+        {
             "type": "node",
             "request": "launch",
             "name": "Backend",
@@ -15,9 +58,39 @@
             "runtimeArgs": [
                 "run-script",
                 "start:nodemon"
-            ], 
+            ],
             "cwd": "${workspaceFolder}/server",
             "outputCapture": "std"
-        }
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Client",
+            "runtimeArgs": [
+                "start"
+            ],
+            "runtimeExecutable": "npm",
+            "localRoot": "${workspaceFolder}/client",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "cwd": "${workspaceFolder}/client",
+            "outputCapture": "std"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Server",
+            "skipFiles": [
+                "<node_internals>\\**"
+            ],
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run",
+                "start:nodemon"
+            ],
+            "cwd": "${workspaceFolder}/server",
+            "outputCapture": "std"
+        },
     ]
 }

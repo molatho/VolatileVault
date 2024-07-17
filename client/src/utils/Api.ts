@@ -28,11 +28,19 @@ export interface ApiConfigResponse extends ApiResponse {
 
 export interface ApiConfigExfilsCollection {
   basichttp?: ApiConfigItem<ApiConfigBasicHTTPExfil>;
+  quic?: ApiConfigItem<ApiConfigQuicExfil>;
 }
 
 export interface ApiConfigBaseExfil {
   single_size?: number;
   chunk_size?: number;
+}
+
+export interface ApiConfigQuicExfil extends ApiConfigBaseExfil {
+  hosts: string[];
+  port: number;
+  key: string;
+  cert: string;
 }
 
 export interface ApiConfigBasicHTTPExfil extends ApiConfigBaseExfil {

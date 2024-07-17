@@ -66,6 +66,8 @@ export interface ExfilProvider extends Extension<ExfilProviderCapabilities> {
    */
   installRoutes(app: express.Express): Promise<void>;
 
+  installServer(): Promise<void>;
+
   // Simple up/downloads
   uploadSingle(
     storage: string,

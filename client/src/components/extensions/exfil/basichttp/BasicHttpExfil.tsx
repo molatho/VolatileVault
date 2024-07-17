@@ -14,8 +14,8 @@ import {
   ExfilUploadFn,
   ReportEvent,
 } from '../../Extension';
-import BasicHttpDownload from './BasicHttpDownload';
-import BasicHttpUpload from './BasicHttpUpload';
+import BasicHttpDownload from './BasicHTTPDownload';
+import BasicHttpUpload from './BasicHTTPUpload';
 
 export class BasicHttpExfil extends BaseExfilExtension {
   get downloadSingleView(): ExfilDownloadFn {

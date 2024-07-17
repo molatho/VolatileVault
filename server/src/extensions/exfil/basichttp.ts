@@ -58,6 +58,10 @@ export class BasicHTTPExfilProvider
     return Promise.resolve(this.config.hosts);
   }
 
+  installServer(): Promise<void> {
+    throw new Error('Method not supported.');
+  }
+
   installRoutes(app: Express): Promise<void> {
     // Upload
     const uploadRoute = express.Router();

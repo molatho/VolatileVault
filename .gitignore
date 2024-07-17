@@ -3,3 +3,9 @@ npm-debug.log
 client/src/compiled/
 .env
 *.bin
+quic/env/
+private_key.pem
+public_key.pem
+bin/
+obj/
+extensions/quic/env/

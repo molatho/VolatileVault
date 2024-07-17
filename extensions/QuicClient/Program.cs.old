@@ -1,0 +1,49 @@
+﻿using System.Security.Cryptography.X509Certificates;
+using System.Security.Cryptography;
+using System.Net.Quic;
+using System.Net;
+using System.Text;
+using System.Net.Security;
+
+_ = Task.Run(async () =>
+{
+    await using var con = await listener.AcceptConnectionAsync();
+    await using var stream = await con.AcceptInboundStreamAsync();
+    var reader = new StreamReader(stream);
+    while (true)
+    {
+        var data = await reader.ReadLineAsync();
+        Console.WriteLine(data);
+        await stream.WriteAsync(Encoding.UTF8.GetBytes("World"));
+    }
+});
+
+try
+{
+
+    var options = new QuicClientConnectionOptions
+    {
+        RemoteEndPoint = IPEndPoint.Parse("127.0.0.1:19999"),
+        DefaultCloseErrorCode = 789,
+        DefaultStreamErrorCode = 987,
+        ClientAuthenticationOptions = new SslClientAuthenticationOptions
+        {
+            ApplicationProtocols = new List<SslApplicationProtocol>
+            {
+                new SslApplicationProtocol("test")
+            },
+            // ClientCertificates = new X509CertificateCollection { cert },
+            TargetHost = "localhost",
+            RemoteCertificateValidationCallback = (sender, chain, certificate, errors) => true
+        }
+    };
+    await using var value = await QuicConnection.ConnectAsync(options);
+    await using var st = await value.OpenOutboundStreamAsync(QuicStreamType.Bidirectional);
+    await st.WriteAsync(Encoding.UTF8.GetBytes("hello\r\n"));
+    var reader = new StreamReader(st);
+    Console.WriteLine(await reader.ReadLineAsync());
+}
+catch (Exception e)
+{
+    Console.WriteLine(e);
+}
