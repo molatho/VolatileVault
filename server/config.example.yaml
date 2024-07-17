@@ -1,15 +1,42 @@
 ---
 general:
   port: 8888
-  totp_secret: '<mysecret>'
+  totp_secret: '<changeme>'
   jwt_expiry: 60
 storage:
   filesystem:
-    folder: './files'
-    maxSize: 104857600
+    folder: './files_basic'
+    max_size: 104857600
     file_expiry: 60
 exfil:
   basichttp:
-    singleSize: 104857600
+    max_total_size: 104857600
     hosts:
-      - 'http://localhost:8888'
+      - 'https://my.cool.site'
+  awscloudfront:
+    access_key_id: '<changeme>'
+    secret_access_key: '<changeme>'
+    region: '<changeme>'
+    distribution_tag: 'volatilevault'
+    domain: my.cool.site
+    folder: './files_aws'
+    chunk_size: 1000000
+    max_total_size: 10000000
+    upload:
+      mode: 'Static'
+      max_duration: 5
+      hosts:
+        - '<dunno>.cloudfront.net'
+        - '<dunno>.cloudfront.net'
+        - '<dunno>.cloudfront.net'
+        - '<dunno>.cloudfront.net'
+        - '<dunno>.cloudfront.net'
+        - '<dunno>.cloudfront.net'
+        - '<dunno>.cloudfront.net'
+        - '<dunno>.cloudfront.net'
+        - '<dunno>.cloudfront.net'
+        - '<dunno>.cloudfront.net'
+    download:
+      mode: 'Dynamic'
+      max_duration: 15
+      max_dynamic_hosts: 10

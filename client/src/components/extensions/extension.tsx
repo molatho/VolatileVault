@@ -2,7 +2,6 @@ import Api, {
   ApiConfigBaseExfil,
   ApiConfigResponse,
   ApiDownloadResponse,
-  ApiResponse,
   ApiUploadResponse,
 } from '../../utils/Api';
 

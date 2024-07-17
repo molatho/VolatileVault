@@ -52,6 +52,7 @@ export interface TransferConfig {
   mode: TransferMode;
   hosts?: string[];
   max_dynamic_hosts?: number;
+  max_duration: number;
 }
 
 export interface ExfilAwsCloudFront extends BaseExfil, BaseAwsSettings {

@@ -23,12 +23,18 @@ import jszip from 'jszip';
 import moment from 'moment';
 import { ExfilExtension } from '../extensions/Extension';
 import { SelectedMode } from '../ModeSelector';
+import EventTable, { createLogEntry, EventEntry } from './EventTable';
 
 interface DownloadBlobProps {
   exfil: ExfilExtension;
   mode: SelectedMode;
   enabled?: boolean;
   onDownloaded: (id: string, blob: ArrayBuffer) => void;
+  onExfilEvent: (
+    category: string,
+    content: string,
+    variant?: 'error' | 'success'
+  ) => void;
 }
 
 function DownloadBlob({
@@ -36,6 +42,7 @@ function DownloadBlob({
   mode,
   enabled = true,
   onDownloaded,
+  onExfilEvent,
 }: DownloadBlobProps) {
   const [id, setId] = useState('');
   const [canDownload, setCanDownload] = useState(false);
@@ -58,8 +65,8 @@ function DownloadBlob({
       //TODO: add EventTable!
       const res =
         mode == 'DownloadSingle'
-          ? await exfil.downloadSingle(id)
-          : await exfil.downloadChunked(id);
+          ? await exfil.downloadSingle(id, onExfilEvent)
+          : await exfil.downloadChunked(id, onExfilEvent);
 
       enqueueSnackbar({
         message: `Downloaded ${formatSize(res.data.byteLength)} of data!`,
@@ -122,6 +129,7 @@ export default function GenericHttpDownload({ exfil, mode }: DownloadProps) {
   const [canDecrypt, setCanDecrypt] = useState(true);
   const [isDecrypted, setIsDecrypted] = useState(false);
   const [files, setFiles] = useState<FileInfo[]>([]);
+  var [entries, setEntries] = useState<EventEntry[]>([]);
 
   if (mode != 'DownloadChunked' && mode != 'DownloadSingle')
     throw new Error(`Unsupported mode ${mode}`);
@@ -176,6 +184,15 @@ export default function GenericHttpDownload({ exfil, mode }: DownloadProps) {
     saveAs(new Blob([blob as ArrayBuffer]), `${id}.zip`);
   };
 
+  const addEntry = (
+    category: string,
+    content: string,
+    variant?: 'error' | 'success'
+  ) => {
+    entries = [...entries, createLogEntry(category, content, variant)];
+    setEntries(entries);
+  };
+
   return (
     <Stack direction="column" spacing={4} mt={2}>
       <DownloadBlob
@@ -186,6 +203,7 @@ export default function GenericHttpDownload({ exfil, mode }: DownloadProps) {
           setId(id);
         }}
         enabled={blob == null}
+        onExfilEvent={addEntry}
       />
       <EnterPassword
         onPasswordEntered={setPassword}
@@ -236,6 +254,12 @@ export default function GenericHttpDownload({ exfil, mode }: DownloadProps) {
           Download
         </Button>
       </Box>
+
+      <Typography variant="h5" px={2}>
+        Log
+      </Typography>
+
+      <EventTable entries={entries} />
     </Stack>
   );
 }

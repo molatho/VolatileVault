@@ -11,7 +11,7 @@ import {
 } from '../../../config/config';
 import { FsUtils } from '../../../fs';
 import { Logger } from '../../../logging';
-import { MultiReadable, readFixedChunks } from '../../../streams';
+import { readFixedChunks } from '../../../streams';
 import { BaseExtension, ExtensionInfo } from '../../extension';
 import { ExtensionRepository } from '../../repository';
 import { CloudFrontWrapper } from './wrapper';
@@ -22,7 +22,9 @@ import {
   FileInformation,
   FileRetrievalInformation,
 } from '../provider';
-import cors from 'cors';
+import cron from 'node-cron';
+import MultiStream from 'multistream';
+import moment from 'moment';
 
 interface ChunkData {
   chunkId: number;
@@ -109,7 +111,48 @@ export class AwsCloudFrontExfilProvider
   }
 
   public override async installCron(): Promise<void> {
-    return; // TODO: periodically check transfer's creation dates and terminate them if they're too old
+    cron.schedule('0 * * * * *', () => {
+      for (const download of this.downloads)
+        download.fs.cleanup(1000 * 60 * this.config.download.max_duration);
+
+      for (const upload of this.uploads)
+        upload.fs.cleanup(1000 * 60 * this.config.upload.max_duration);
+
+      const now = moment();
+      const expired = (
+        transfer: TransferData,
+        minutes: number,
+        removeHosts: boolean
+      ): boolean => {
+        const _expired =
+          moment.duration(now.diff(moment(transfer.creation))).asMinutes() >=
+          minutes;
+
+        if (_expired) {
+          this.logger.info(`Removing expired transfer ${transfer.id}`);
+          if (removeHosts) this.client.releaseDistributions(transfer.id);
+        }
+        return _expired;
+      };
+
+      this.downloads = this.downloads.filter(
+        (download) =>
+          !expired(
+            download,
+            this.config.download.max_duration,
+            this.config.download.mode == 'Dynamic'
+          )
+      );
+      this.uploads = this.uploads.filter(
+        (upload) =>
+          !expired(
+            upload,
+            this.config.upload.max_duration,
+            this.config.upload.mode == 'Dynamic'
+          )
+      );
+    });
+    return Promise.resolve();
   }
 
   private validateTransferConfig(
@@ -297,7 +340,7 @@ export class AwsCloudFrontExfilProvider
       async (req: Request, res: Response) => {
         try {
           this.logger.info(
-            `Download request for ${req.params?.transferId ?? 'n/a'} chunk # ${
+            `Upload request for ${req.params?.transferId ?? 'n/a'} chunk # ${
               req.params?.chunkNo ?? 'n/a'
             } from ${req.ip}`
           );
@@ -328,6 +371,7 @@ export class AwsCloudFrontExfilProvider
         }
       }
     );
+    app.use(chunkedUpload);
 
     // Kick-off a chunked download
     const initChunkDownload = express.Router();
@@ -564,10 +608,10 @@ export class AwsCloudFrontExfilProvider
       })
     );
 
-    const multistream = new MultiReadable(files.map((f) => f[0]));
+    const multistream = new MultiStream(files.map((f) => f[0]));
 
     this.logger.debug(
-      `Storing combined data of ${transferId} to ${storage}...`
+      `Storing combined data of ${transferId} to ${storage.name}...`
     );
     const storageInfo = await storage.store({
       size: files.reduce((sum, file) => sum + file[1], 0),

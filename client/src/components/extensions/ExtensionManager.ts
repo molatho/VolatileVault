@@ -12,7 +12,7 @@ export function initializeExfilExtensions(
   config: ApiConfigResponse
 ): ExfilExtension[] {
   if (Config.DEBUG)
-    return [new BasicHttpExfil(api, config), new DummyExfil(api, config), new AwsCloudFrontExfil(api, config)];
+    return [new BasicHttpExfil(api, config), new AwsCloudFrontExfil(api, config), new DummyExfil(api, config)];
   else return [new BasicHttpExfil(api, config), new AwsCloudFrontExfil(api, config)];
 }
 

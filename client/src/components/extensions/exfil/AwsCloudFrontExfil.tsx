@@ -16,6 +16,7 @@ import {
 } from '../Extension';
 import GenericHttpDownload from '../../ui/GenericHttpDownload';
 import GenericHttpUpload from '../../ui/GenericHttpUpload';
+import { formatSize } from '../../../utils/Files';
 
 export class AwsCloudFrontExfil extends BaseExfilExtension {
   get downloadSingleView(): ExfilDownloadFn {
@@ -83,10 +84,18 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
       // Initiate download
       const initChunkedData = await this.initChunkedDownload(id);
 
+      reportEvent &&
+        reportEvent(
+          'Control',
+          `TransferID: ${initChunkedData.id}, Chunks: ${
+            initChunkedData.chunks
+          }, Size: ${formatSize(initChunkedData.size)}`
+        );
+
       if (this.getConfig().download.mode == 'Dynamic')
         reportEvent &&
           reportEvent(
-            'Info',
+            'Control',
             'Chunked download uses dynamically deployed distributions; this might take several minutes'
           );
 
@@ -95,7 +104,10 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
         new Promise((resolve) => setTimeout(resolve, ms));
       var domainsReady = false;
       do {
-        const info = await this.getTransferStatus(initChunkedData.hosts[0], initChunkedData.id);
+        const info = await this.getTransferStatus(
+          initChunkedData.hosts[0],
+          initChunkedData.id
+        );
         domainsReady = info.status;
         if (!domainsReady) {
           await delay(10);
@@ -106,14 +118,26 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
 
       // Download all chunks
       reportEvent &&
-        reportEvent('Info', `Downloading ${initChunkedData.chunks} chunks...`);
+        reportEvent(
+          'Download',
+          `Downloading ${initChunkedData.chunks} chunks...`
+        );
       const chunks = await Promise.all(
         Array.from({ length: initChunkedData.chunks }, (_, key) =>
           this.downloadChunk(
             initChunkedData.hosts[key % initChunkedData.hosts.length],
             initChunkedData.id,
             key
-          )
+          ).then((res) => {
+            reportEvent &&
+              reportEvent(
+                'Download',
+                `Downloaded ${formatSize(
+                  res.data.byteLength
+                )} from chunk #${key}.`
+              );
+            return res;
+          })
         )
       );
 
@@ -131,7 +155,12 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
       });
 
       // Terminate download
-      await this.terminateDownload(initChunkedData.hosts[0], initChunkedData.id);
+      await this.terminateDownload(
+        initChunkedData.hosts[0],
+        initChunkedData.id
+      );
+
+      reportEvent && reportEvent('Info', 'Download finished!', 'success');
 
       return Api.success_from_data({ data: allChunks }) as ApiDownloadResponse;
     } catch (error) {
@@ -143,12 +172,80 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
       );
     }
   }
-  uploadChunked(
+
+  async uploadChunked(
     storage: string,
     data: ArrayBuffer,
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiUploadResponse> {
-    throw new Error('Method not supported.');
+    // Initiate download
+    const initChunkedData = await this.initChunkedUpload(storage, data);
+
+    reportEvent &&
+      reportEvent(
+        'Control',
+        `TransferID: ${initChunkedData.id}, Chunks: ${
+          initChunkedData.chunks
+        }, Size: ${formatSize(initChunkedData.size)}`
+      );
+
+    const chunksize = this.getConfig().chunk_size as number;
+    const chunks = Array.from({ length: initChunkedData.chunks }, (_, key) =>
+      data.slice(key * chunksize, key * chunksize + chunksize)
+    );
+
+    if (this.getConfig().upload.mode == 'Dynamic')
+      reportEvent &&
+        reportEvent(
+          'Control',
+          'Chunked upload uses dynamically deployed distributions; this might take several minutes'
+        );
+
+    // Wait for domains to become ready
+    const delay = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+    var domainsReady = false;
+    do {
+      const info = await this.getTransferStatus(
+        initChunkedData.hosts[0],
+        initChunkedData.id
+      );
+      domainsReady = info.status;
+      if (!domainsReady) {
+        await delay(10);
+        reportEvent &&
+          reportEvent('Info', 'Waiting for distributions to deploy...');
+      }
+    } while (!domainsReady);
+
+    // Upload all chunks
+    reportEvent &&
+      reportEvent('Upload', `Uploading ${initChunkedData.chunks} chunks...`);
+
+    const res = await Promise.all(
+      chunks.map((chunk, i) =>
+        this.uploadChunk(
+          initChunkedData.hosts[i % initChunkedData.hosts.length],
+          initChunkedData.id,
+          i,
+          chunk
+        ).then((res) => {
+          reportEvent &&
+            reportEvent(
+              'Upload',
+              `Uploaded ${formatSize(chunks[i].byteLength)} for chunk #${i}.`
+            );
+          return res;
+        })
+      )
+    );
+
+    const id = res.find((r) => r.id !== undefined);
+    if (!id) throw new Error('Did not receive a file ID');
+
+    reportEvent && reportEvent('Info', 'Upload finished!', 'success');
+
+    return id;
   }
   addHost(reportEvent: ReportEvent): Promise<string> {
     throw new Error('Method not supported.');
@@ -177,13 +274,13 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
           },
           responseType: 'json',
           withCredentials: true,
-          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`
+          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
         }
       );
 
       if (!res.data)
         return Promise.reject(
-          Api.fail_from_error(undefined, 'Failed to download data')
+          Api.fail_from_error(undefined, 'Failed to init download')
         );
 
       return Api.success_from_data(res.data) as InitChunkedResponse;
@@ -211,7 +308,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
           },
           responseType: 'arraybuffer',
           withCredentials: true,
-          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`
+          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
         }
       );
 
@@ -238,26 +335,21 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
     transferId: string
   ): Promise<TransferStatusResponse> {
     try {
-      const res = await axios.get(
-        `/api/${this.name}/status/${transferId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.api.token}`,
-          },
-          responseType: 'json',
-          withCredentials: true,
-          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`
-        }
-      );
+      const res = await axios.get(`/api/${this.name}/status/${transferId}`, {
+        headers: {
+          Authorization: `Bearer ${this.api.token}`,
+        },
+        responseType: 'json',
+        withCredentials: true,
+        baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
+      });
 
       if (!res.data)
         return Promise.reject(
           Api.fail_from_error(undefined, 'Failed to download data')
         );
 
-      return Api.success_from_data(
-        res.data,
-      ) as TransferStatusResponse;
+      return Api.success_from_data(res.data) as TransferStatusResponse;
     } catch (error) {
       return Promise.reject(
         Api.fail_from_error(
@@ -268,7 +360,10 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
     }
   }
 
-  async terminateDownload(host: string, transferId: string): Promise<ApiResponse> {
+  async terminateDownload(
+    host: string,
+    transferId: string
+  ): Promise<ApiResponse> {
     try {
       const res = await axios.post(
         `/api/${this.name}/download/terminate/${transferId}`,
@@ -279,7 +374,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
           },
           responseType: 'json',
           withCredentials: true,
-          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`
+          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
         }
       );
 
@@ -288,8 +383,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
           Api.fail_from_error(undefined, 'Failed to terminate download')
         );
 
-      return Api.success_from_data({
-      }) as ApiResponse;
+      return Api.success_from_data({}) as ApiResponse;
     } catch (error) {
       return Promise.reject(
         Api.fail_from_error(
@@ -297,6 +391,83 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
           (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
         ) as ApiResponse
       );
+    }
+  }
+
+  async initChunkedUpload(
+    storage: string,
+    data: ArrayBuffer
+  ): Promise<InitChunkedResponse> {
+    const cfg = this.getConfig();
+    const host =
+      cfg.download.hosts && cfg.download.hosts.length
+        ? cfg.download.hosts[
+            Math.floor(Math.random() * cfg.download.hosts.length)
+          ]
+        : Api.BASE_URL;
+
+    try {
+      const res = await axios.post(
+        `/api/${this.name}/initupload/${storage}/${data.byteLength}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${this.api.token}`,
+          },
+          responseType: 'json',
+          withCredentials: true,
+          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
+        }
+      );
+
+      if (!res.data)
+        return Promise.reject(
+          Api.fail_from_error(undefined, 'Failed to init upload')
+        );
+
+      return Api.success_from_data(res.data) as InitChunkedResponse;
+    } catch (error) {
+      return Promise.reject(
+        Api.fail_from_error(
+          error,
+          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+        ) as ApiDownloadResponse
+      );
+    }
+  }
+
+  async uploadChunk(
+    host: string,
+    transferId: string,
+    chunkNo: number,
+    data: ArrayBuffer
+  ): Promise<ApiUploadResponse> {
+    const cfg = this.getConfig();
+
+    try {
+      const res = await axios.post(
+        `/api/${this.name}/upload/${transferId}/chunk/${chunkNo}`,
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            Authorization: `Bearer ${this.api.token}`,
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          responseType: 'json',
+          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
+        }
+      );
+
+      if (res.status != 200)
+        return Promise.reject(
+          Api.fail_from_error(undefined, `Failed to upload chunk ${chunkNo}`)
+        );
+
+      return Api.success_from_data(res.data) as ApiUploadResponse;
+    } catch (error) {
+      return Promise.reject<ApiResponse>(Api.fail_from_error(error));
     }
   }
 }

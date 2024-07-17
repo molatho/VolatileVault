@@ -27,9 +27,10 @@
 * **Volatile storage**: All uploaded data has a preconfigured life-time (e.g. one hour) after which it gets deleted on the server side. Any previously stored encrypted blobs are removed on the server side upon startup of the server application.
 * **TOTP authentication**: Access to the service is granted by using a shared secret for TOTP authentication, making it easy to use and more resilient to credential leakage.
 * **Configurable**: Specifics such as the maximum allowed file size and life time of uploaded blobs can be configured using `.env` files before deployment of the application.
+* **Chunks + HTTPS redirectors**: Upload the encrypted blobs in chunks via a range of HTTP redirectors pointing to the service.
 
 ## Roadmap
-* **Chunks + HTTPS redirectors**: Upload the encrypted blobs in chunks via a range of HTTP redirectors pointing to the service.
+
 * **Rate limiting**: Limit the upload speed to the service so uploads won't be as easy to detect as bursts.
 * **Password-encrypted Archives**: Encrypt the archives themselves so they can't be read in plain text on disk.
 * **External blob storage**: Move encrypted blobs to some more scalable service such as S3.

@@ -125,7 +125,10 @@ export class FsUtils {
   }
 
   public async removeFile(id: string): Promise<void> {
-    return await this.db.removeFile(id);
+    this.logger.debug(`Removing ${id} from db...`);
+    await this.db.removeFile(id);
+    this.logger.debug(`Removing ${id} from disk..`);
+    fsSync.rmSync(path.join(this.dir, id));
   }
 
   public async cleanup(ageMs: number): Promise<void> {
