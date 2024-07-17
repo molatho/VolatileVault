@@ -3,17 +3,17 @@ import {
   StorageInformation,
   StorageProvider,
   StorageProviderCapabilities,
-} from './provider';
-import { BaseExtension, ExtensionInfo } from '../extension';
+} from '../provider';
+import { BaseExtension, ExtensionInfo } from '../../extension';
 import {
   StorageFileSystem,
   Config,
-} from '../../config/config';
-import { FsUtils } from '../../fs';
-import { ExtensionRepository } from '../repository';
+} from '../../../config/config';
+import { FsUtils } from '../../../fs';
+import { ExtensionRepository } from '../../repository';
 import cron from 'node-cron';
 import winston from 'winston';
-import { Logger } from '../../logging';
+import { Logger } from '../../../logging';
 
 export class FileSystemStorageProvider
   extends BaseExtension<StorageProviderCapabilities>

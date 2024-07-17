@@ -6,9 +6,9 @@ import { Request as JWTRequest, UnauthorizedError } from 'express-jwt';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import nocache from 'nocache';
-import { FileSystemStorageProvider } from './extensions/storage/filesystem';
+import { FileSystemStorageProvider } from './extensions/storage/FileSystem/filesystem';
 import { ExtensionRepository } from './extensions/repository';
-import { BasicHTTPExfilProvider } from './extensions/exfil/basichttp';
+import { BasicHTTPExfilProvider } from './extensions/exfil/BasicHttp/basichttp';
 import { Logger } from './logging';
 import { AwsCloudFrontExfilProvider } from './extensions/exfil/AwsCloudFront/awscloudfront';
 
