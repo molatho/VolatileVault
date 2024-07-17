@@ -48,7 +48,7 @@ export class DummyExfil extends BaseExfilExtension {
   }
   getConfig(): ApiConfigBaseExfil {
     return {
-      single_size: 1024 * 1024 * 1024,
+      max_total_size: 1024 * 1024 * 1024,
       chunk_size: 1024 * 1024 * 1024,
     };
   }
@@ -66,25 +66,13 @@ export class DummyExfil extends BaseExfilExtension {
   ): Promise<ApiUploadResponse> {
     throw new Error('Method not implemented.');
   }
-  initChunkDownload(
-    storage: string,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiResponse> {
-    throw new Error('Method not implemented.');
-  }
-  initChunkUpload(
-    storage: string,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiResponse> {
-    throw new Error('Method not implemented.');
-  }
-  downloadChunk(
+  downloadChunked(
     id: string,
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiDownloadResponse> {
     throw new Error('Method not implemented.');
   }
-  uploadChunk(
+  uploadChunked(
     storage: string,
     data: ArrayBuffer,
     reportEvent?: ReportEvent | undefined

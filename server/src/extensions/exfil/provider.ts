@@ -56,7 +56,7 @@ export interface BinaryData {
  */
 export interface ExfilProvider extends Extension<ExfilProviderCapabilities> {
   get hosts(): Promise<string[]>;
-  get config() : BaseExfil;
+  get config(): BaseExfil;
 
   /**
    * Allows extensions to install their own routes
@@ -76,13 +76,10 @@ export interface ExfilProvider extends Extension<ExfilProviderCapabilities> {
   downloadSingle(info: FileInformation): Promise<BinaryData>;
 
   // Chunked up/downloads
-  initChunkUpload(storage: string, info: any): string; // TODO: Define info type
-  initChunkDownload(info: any): string;
-  uploadChunk(
-    storage: string,
-    data: BinaryData
-  ): Promise<FileRetrievalInformation>;
-  downloadChunk(info: FileInformation): BinaryData;
+  initChunkUpload(storage: string, size: number): Promise<string>; // TODO: Define info type
+  initChunkDownload(info: FileInformation): Promise<string>;
+  uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileRetrievalInformation>;
+  downloadChunk(transferId: string, chunkNo: number): Promise<BinaryData>;
 
   // Hosts management
   addHost(): Promise<string>;

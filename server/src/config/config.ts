@@ -41,7 +41,7 @@ export interface ExfilQuic extends BaseExfil {
 }
 
 export interface BaseExfil {
-  single_size?: number;
+  max_total_size?: number;
   chunk_size?: number;
 }
 
@@ -50,9 +50,24 @@ export interface ExfilBasicHTTP extends BaseExfil {
 }
 
 export interface BaseAwsSettings {
-  accessKeyId: string;
-  secretAccessKey: string;
+  access_key_id: string;
+  secret_access_key: string;
   region: string;
 }
 
-export interface ExfilAwsCloudFront extends BaseExfil, BaseAwsSettings {}
+export type TransferMode = 'Dynamic' | 'Static';
+
+export interface TransferConfig {
+  mode: TransferMode;
+  hosts?: string[];
+  max_dynamic_hosts?: number;
+  max_duration: number;
+}
+
+export interface ExfilAwsCloudFront extends BaseExfil, BaseAwsSettings {
+  distribution_tag: string;
+  domain: string;
+  folder: string;
+  upload: TransferConfig;
+  download: TransferConfig;
+}

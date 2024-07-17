@@ -1,5 +1,11 @@
 import { Config } from '../config/config';
 
+export type ExtensionState =
+  | 'Uninitialized'
+  | 'Initialized'
+  | 'InitializationError'
+  | 'Unconfigured';
+
 export interface ExtensionInfo {
   name: string;
   displayName: string;
@@ -10,10 +16,11 @@ export interface Extension<CAP extends string> {
   get name(): string;
   get capabilities(): CAP[];
   get clientConfig(): ExtensionInfo;
+  get state(): ExtensionState;
 
   supports(capability: CAP): boolean;
 
-  init(cfg: Config): Promise<void>;
+  init(cfg: Config): Promise<void>; 
 
   /**
    * Allows extensions to install their own cron jobs
@@ -32,8 +39,15 @@ export abstract class BaseExtension<CAP extends string>
   public get capabilities(): CAP[] {
     return this._capabilities;
   }
+  public get state(): ExtensionState {
+    return this._state;
+  }
+  protected set state(val: ExtensionState) {
+    this._state = val;
+  }
 
   private _name: string;
+  private _state: ExtensionState = 'Uninitialized';
   private _capabilities: CAP[];
   protected cfg: Config;
 

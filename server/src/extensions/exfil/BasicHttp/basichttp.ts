@@ -2,18 +2,17 @@ import bodyParser from 'body-parser';
 import express, { Express, Request, Response } from 'express';
 import { Readable } from 'node:stream';
 import winston from 'winston';
-import { Config, ExfilBasicHTTP } from '../../config/config';
-import { BaseExtension, ExtensionInfo } from '../extension';
-import { ExtensionRepository } from '../repository';
-import { Logger } from '../../logging';
-import { StorageProvider } from '../storage/provider';
+import { Config, ExfilBasicHTTP } from '../../../config/config';
+import { BaseExtension, ExtensionInfo } from '../../extension';
+import { ExtensionRepository } from '../../repository';
+import { Logger } from '../../../logging';
 import {
   BinaryData,
   ExfilProvider,
   ExfilProviderCapabilities,
   FileInformation,
   FileRetrievalInformation,
-} from './provider';
+} from '../provider';
 
 export class BasicHTTPExfilProvider
   extends BaseExtension<ExfilProviderCapabilities>
@@ -39,15 +38,16 @@ export class BasicHTTPExfilProvider
     };
   }
 
-  init(cfg: Config): Promise<void> {
+  async init(cfg: Config): Promise<void> {
     this.cfg = cfg;
     if (this.config) {
       this.logger.info('Initialized');
       this.register();
+      this.state = 'Initialized';
     } else {
       this.logger.debug('Config not set');
+      this.state = 'Unconfigured';
     }
-    return Promise.resolve();
   }
 
   protected register() {
@@ -58,17 +58,13 @@ export class BasicHTTPExfilProvider
     return Promise.resolve(this.config.hosts);
   }
 
-  installServer(): Promise<void> {
-    throw new Error('Method not supported.');
-  }
-
   installRoutes(app: Express): Promise<void> {
     // Upload
     const uploadRoute = express.Router();
 
     uploadRoute.use(
       bodyParser.raw({
-        limit: this.config.single_size,
+        limit: this.config.max_total_size,
         type: 'application/octet-stream',
       })
     );
@@ -177,32 +173,23 @@ export class BasicHTTPExfilProvider
   }
 
   async downloadSingle(info: FileInformation): Promise<BinaryData> {
-    const getStorage = async (): Promise<StorageProvider> => {
-      for (const storage of ExtensionRepository.getInstance().storages) {
-        if (await storage.has(info.id)) return storage;
-      }
-      throw new Error('Unknown storage');
-    };
-
-    const storage = await getStorage();
+    const storage = await ExtensionRepository.getInstance().getStorageForFile(info.id);
     var data = await storage.retrieve({ id: info.id });
+    
     return data;
   }
 
   // Unsupported methods
-  initChunkDownload(info: any): string {
+  initChunkDownload(info: FileInformation): Promise<string> {
     throw new Error('Method not supported.');
   }
-  initChunkUpload(storage: string, info: any): string {
+  initChunkUpload(storage: string, size: number): Promise<string> {
     throw new Error('Method not supported.');
   }
-  uploadChunk(
-    storage: string,
-    data: BinaryData
-  ): Promise<FileRetrievalInformation> {
+  uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileRetrievalInformation> {
     throw new Error('Method not supported.');
   }
-  downloadChunk(info: FileInformation): BinaryData {
+  downloadChunk(transferId: string, chunkNo: number): Promise<BinaryData> {
     throw new Error('Method not supported.');
   }
   addHost(): Promise<string> {

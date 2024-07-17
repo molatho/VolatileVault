@@ -6,11 +6,11 @@ import { Request as JWTRequest, UnauthorizedError } from 'express-jwt';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import nocache from 'nocache';
-import { FileSystemStorageProvider } from './extensions/storage/filesystem';
+import { FileSystemStorageProvider } from './extensions/storage/FileSystem/filesystem';
 import { ExtensionRepository } from './extensions/repository';
-import { BasicHTTPExfilProvider } from './extensions/exfil/basichttp';
+import { BasicHTTPExfilProvider } from './extensions/exfil/BasicHttp/basichttp';
 import { Logger } from './logging';
-import { AwsCloudFrontExfilProvider } from './extensions/exfil/awscloudfront';
+import { AwsCloudFrontExfilProvider } from './extensions/exfil/AwsCloudFront/awscloudfront';
 
 const EXTENSIONS = [
   new BasicHTTPExfilProvider(),
@@ -31,6 +31,15 @@ const main = async (): Promise<void> => {
     await extension.init(ConfigInstance.Inst);
   }
 
+  const failed = EXTENSIONS.filter((e) => e.state == 'InitializationError');
+  if (failed.length > 0) {
+    throw new Error(
+      `The following extension(s) failed to initialize: ${failed
+        .map((f) => f.name)
+        .join(', ')}`
+    );
+  }
+
   if (ExtensionRepository.getInstance().exfils.length == 0)
     throw new Error(
       'No exfil provider was initialized: verify that at least one is configured.'
@@ -46,7 +55,18 @@ const main = async (): Promise<void> => {
   app.disable('x-powered-by');
 
   app.use(nocache());
-  app.use(cors()); // TODO: Disable in prod!
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        Promise.all(
+          ExtensionRepository.getInstance().exfils.map((e) => e.hosts)
+        ).then((all) => cb(null, all.flat()));
+      },
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type'],
+      credentials: true,
+    })
+  ); // TODO: Disable in prod!
 
   app.use(bodyParser.urlencoded({ extended: false }));
 

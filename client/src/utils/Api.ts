@@ -1,4 +1,4 @@
-import axios, { Axios, AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import Config from './Config';
 
 export interface ApiResponse {
@@ -29,10 +29,11 @@ export interface ApiConfigResponse extends ApiResponse {
 export interface ApiConfigExfilsCollection {
   basichttp?: ApiConfigItem<ApiConfigBasicHTTPExfil>;
   quic?: ApiConfigItem<ApiConfigQuicExfil>;
+  awscloudfront?: ApiConfigItem<ApiConfigAwsCloudFrontExfil>;
 }
 
 export interface ApiConfigBaseExfil {
-  single_size?: number;
+  max_total_size?: number;
   chunk_size?: number;
 }
 
@@ -45,6 +46,18 @@ export interface ApiConfigQuicExfil extends ApiConfigBaseExfil {
 
 export interface ApiConfigBasicHTTPExfil extends ApiConfigBaseExfil {
   hosts: string[];
+}
+
+export type AwsCloudFrontTransferMode = 'Dynamic' | 'Static';
+
+export interface AwsCloudFrontTransferConfig {
+  mode: AwsCloudFrontTransferMode;
+  hosts?: string[];
+}
+
+export interface ApiConfigAwsCloudFrontExfil extends ApiConfigBaseExfil {
+  upload: AwsCloudFrontTransferConfig;
+  download: AwsCloudFrontTransferConfig;
 }
 
 export interface ApiConfigStorageCollection {

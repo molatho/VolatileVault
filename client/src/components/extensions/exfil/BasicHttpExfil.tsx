@@ -4,7 +4,7 @@ import Api, {
   ApiDownloadResponse,
   ApiUploadResponse,
   ApiResponse,
-} from '../../../../utils/Api';
+} from '../../../utils/Api';
 import {
   BaseExfilExtension,
   ConfigFn,
@@ -13,27 +13,27 @@ import {
   ExfilProviderCapabilities,
   ExfilUploadFn,
   ReportEvent,
-} from '../../Extension';
-import BasicHttpDownload from './BasicHTTPDownload';
-import BasicHttpUpload from './BasicHTTPUpload';
+} from '../Extension';
+import GenericHttpDownload from '../../ui/GenericHttpDownload';
+import GenericHttpUpload from '../../ui/GenericHttpUpload';
 
 export class BasicHttpExfil extends BaseExfilExtension {
   get downloadSingleView(): ExfilDownloadFn {
-    return () => <BasicHttpDownload exfil={this} />;
+    return () => <GenericHttpDownload exfil={this} mode='DownloadSingle'/>
   }
   get uploadSingleView(): ExfilUploadFn {
     return ({ storage }: ExfilDownloadViewProps) => (
-      <BasicHttpUpload exfil={this} storage={storage} />
+      <GenericHttpUpload exfil={this} storage={storage} mode='UploadSingle'/>
     );
   }
   get configView(): ConfigFn {
-    throw new Error('Method not implemented.');
+    throw new Error('Method not supported.');
   }
   get downloadChunkedView(): ExfilDownloadFn {
-    throw new Error('Method not implemented.');
+    throw new Error('Method not supported.');
   }
   get uploadChunkedView(): ExfilUploadFn {
-    throw new Error('Method not implemented.');
+    throw new Error('Method not supported.');
   }
 
   get name(): string {
@@ -132,36 +132,23 @@ export class BasicHttpExfil extends BaseExfilExtension {
       return Promise.reject<ApiResponse>(Api.fail_from_error(error));
     }
   }
-
-  initChunkDownload(
-    storage: string,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiResponse> {
-    throw new Error('Method not implemented.');
-  }
-  initChunkUpload(
-    storage: string,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiResponse> {
-    throw new Error('Method not implemented.');
-  }
-  downloadChunk(
+  downloadChunked(
     id: string,
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiDownloadResponse> {
-    throw new Error('Method not implemented.');
+    throw new Error('Method not supported.');
   }
-  uploadChunk(
+  uploadChunked(
     storage: string,
     data: ArrayBuffer,
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiUploadResponse> {
-    throw new Error('Method not implemented.');
+    throw new Error('Method not supported.');
   }
   addHost(reportEvent: ReportEvent): Promise<string> {
-    throw new Error('Method not implemented.');
+    throw new Error('Method not supported.');
   }
   removeHost(host: string, reportEvent: ReportEvent): Promise<void> {
-    throw new Error('Method not implemented.');
+    throw new Error('Method not supported.');
   }
 }

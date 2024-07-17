@@ -24,13 +24,15 @@ import { useDropzone } from 'react-dropzone';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import jszip from 'jszip';
-import { encryptSymmetric } from '../../../../utils/Crypto';
+import { encryptSymmetric } from '../../utils/Crypto';
 import { enqueueSnackbar } from 'notistack';
 import moment from 'moment';
-import EnterPassword from '../../../EnterPassword';
-import { calcSize, formatSize } from '../../../../utils/Files';
-import { fromArrayBuffer } from '../../../../utils/Entropy';
-import { ExfilExtension, StorageExtension } from '../../Extension';
+import EnterPassword from '../EnterPassword';
+import { calcSize, formatSize } from '../../utils/Files';
+import { fromArrayBuffer } from '../../utils/Entropy';
+import { ExfilExtension, StorageExtension } from '../extensions/Extension';
+import EventTable, { createLogEntry, EventEntry } from './EventTable';
+import { SelectedMode } from '../ModeSelector';
 
 interface FileSelectionProps {
   onFilesSelected: (files: File[]) => void;
@@ -103,16 +105,18 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
   }, [acceptedFiles]);
 
   useEffect(() => {
-    Promise.all(
-      selectedFiles.map(async (file) => {
-        if (Object.keys(entropies).findIndex((k) => k == file.name) === -1) {
-          const data = await file.arrayBuffer();
-          entropies[file.name] = fromArrayBuffer(data);
-          setEntropies({ ...entropies });
-        }
-        return entropies;
-      })
-    ).then((res) => {
+    const updateEntropies = async () => {
+      const res = await Promise.all(
+        selectedFiles.map(async (file) => {
+          if (Object.keys(entropies).findIndex((k) => k == file.name) === -1) {
+            const data = await file.arrayBuffer();
+            entropies[file.name] = fromArrayBuffer(data);
+            setEntropies({ ...entropies });
+          }
+          return entropies;
+        })
+      );
+
       // Remove entries of files that were removed already
       if (res.length)
         setEntropies(
@@ -122,7 +126,9 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
             return res;
           }, {} as { [key: string]: number })
         );
-    });
+    };
+
+    updateEntropies();
   }, [selectedFiles]);
 
   useEffect(() => {
@@ -266,6 +272,7 @@ interface ProcessUploadProps {
   files: File[];
   password: string;
   exfil: ExfilExtension;
+  mode: SelectedMode;
   storage: StorageExtension;
   onFinished: (info: UploadInfo) => void;
   maxFileSize?: number;
@@ -275,192 +282,130 @@ function ProcessUpload({
   files,
   password,
   exfil,
+  mode,
   storage,
   onFinished,
   maxFileSize,
 }: ProcessUploadProps) {
-  interface LogEntry {
-    timestamp: Date;
-    category: string;
-    content: string;
-    variant: 'error' | 'success' | undefined;
-  }
-
-  var [entries, setEntries] = useState<LogEntry[]>([]);
+  var [entries, setEntries] = useState<EventEntry[]>([]);
 
   const [encData, setEncData] = useState<ArrayBuffer | null>(null);
   const [encIv, setEncIv] = useState<ArrayBuffer | null>(null);
-
-  const summaryRef = createRef<HTMLTableRowElement>();
 
   const addEntry = (
     category: string,
     content: string,
     variant?: 'error' | 'success'
   ) => {
-    entries = [
-      ...entries,
-      {
-        timestamp: new Date(Date.now()),
-        category: category,
-        content: content,
-        variant: variant,
-      },
-    ];
+    entries = [...entries, createLogEntry(category, content, variant)];
     setEntries(entries);
   };
 
-  useEffect(
-    () => summaryRef.current?.scrollIntoView({ behavior: 'smooth' }),
-    [entries]
-  );
-
   useEffect(() => {
-    const zipFile = jszip();
-    addEntry('Compression', 'Starting...');
-    Promise.all(
-      files.map(async (file) => {
-        const data = await file.arrayBuffer();
-        zipFile.file(file.name, data, { date: new Date(file.lastModified) });
-      })
-    )
-      .then(async () => {
-        var lastFile = '';
-        var blob = await zipFile.generateAsync(
-          {
-            type: 'arraybuffer',
-            compression: 'DEFLATE',
-            compressionOptions: { level: 9 },
-          },
-          (meta) => {
-            if (meta.currentFile && lastFile != meta.currentFile) {
-              addEntry(
-                'Compression',
-                `Processing "${meta.currentFile}" (${meta.percent.toFixed(
-                  Math.max(0, files.length.toString().length - 3)
-                )}%)`
-              );
-              lastFile = meta.currentFile;
-            }
+    const processFiles = async () => {
+      const zipFile = jszip();
+      addEntry('Compression', 'Starting...');
+      await Promise.all(
+        files.map(async (file) => {
+          const data = await file.arrayBuffer();
+          zipFile.file(file.name, data, { date: new Date(file.lastModified) });
+        })
+      );
+      var lastFile = '';
+      var blob = await zipFile.generateAsync(
+        {
+          type: 'arraybuffer',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 9 },
+        },
+        (meta) => {
+          if (meta.currentFile && lastFile != meta.currentFile) {
+            addEntry(
+              'Compression',
+              `Processing "${meta.currentFile}" (${meta.percent.toFixed(
+                Math.max(0, files.length.toString().length - 3)
+              )}%)`
+            );
+            lastFile = meta.currentFile;
           }
-        );
-        addEntry(
-          'Compression',
-          `Done: compressed ${formatSize(calcSize(files))} to ${formatSize(
-            blob.byteLength
-          )} (entropy: ${fromArrayBuffer(blob).toFixed(2)})`,
-          'success'
-        );
-        return blob;
-      })
-      .then((blob) => {
-        addEntry('Encryption', 'Starting...');
-        return encryptSymmetric(blob, password);
-      })
-      .then(([cipher, iv]) => {
-        addEntry(
-          'Encryption',
-          `Done: ${formatSize(cipher.byteLength)} (entropy: ${fromArrayBuffer(
-            cipher
-          ).toFixed(2)})`,
-          'success'
-        );
-        setEncData(cipher);
-        setEncIv(iv);
-        return Promise.resolve([cipher, iv]);
-      })
-      .catch((err) => {
-        enqueueSnackbar({
-          message: `Processing failed: ${err?.message ?? JSON.stringify(err)}`,
-          variant: 'error',
-        });
-        addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
+        }
+      );
+      addEntry(
+        'Compression',
+        `Done: compressed ${formatSize(calcSize(files))} to ${formatSize(
+          blob.byteLength
+        )} (entropy: ${fromArrayBuffer(blob).toFixed(2)})`,
+        'success'
+      );
+      addEntry('Encryption', 'Starting...');
+      const [cipher, iv] = await encryptSymmetric(blob, password);
+      addEntry(
+        'Encryption',
+        `Done: ${formatSize(cipher.byteLength)} (entropy: ${fromArrayBuffer(
+          cipher
+        ).toFixed(2)})`,
+        'success'
+      );
+      setEncData(cipher);
+      setEncIv(iv);
+    };
+
+    processFiles().catch((err) => {
+      enqueueSnackbar({
+        message: `Processing failed: ${err?.message ?? JSON.stringify(err)}`,
+        variant: 'error',
       });
+      addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
+    });
   }, []);
 
   useEffect(() => {
     if (!encData || !encIv) return;
-    const data = encData as ArrayBuffer;
-    const iv = encIv as ArrayBuffer;
-    var tmp = new Uint8Array(data.byteLength + iv.byteLength);
-    tmp.set(new Uint8Array(iv), 0);
-    tmp.set(new Uint8Array(data), iv.byteLength);
+    const performUpload = async () => {
+      const data = encData as ArrayBuffer;
+      const iv = encIv as ArrayBuffer;
+      var tmp = new Uint8Array(data.byteLength + iv.byteLength);
+      tmp.set(new Uint8Array(iv), 0);
+      tmp.set(new Uint8Array(data), iv.byteLength);
 
-    if (maxFileSize && tmp.byteLength > maxFileSize) {
-      addEntry(
-        'ERROR',
-        `File size ${formatSize(
-          tmp.byteLength
-        )} exceeds the allowed maximum of ${formatSize(
-          maxFileSize
-        )}; aborting.`,
-        'error'
-      );
-      return;
-    }
+      if (maxFileSize && tmp.byteLength > maxFileSize) {
+        throw new Error(
+          `File size ${formatSize(
+            tmp.byteLength
+          )} exceeds the allowed maximum of ${formatSize(
+            maxFileSize
+          )}; aborting.`
+        );
+      }
 
-    addEntry('Upload', 'Starting...');
-    exfil
-      .uploadSingle(storage.name, tmp)
-      .then((res) => {
-        addEntry('Upload', 'Done!', 'success');
-        enqueueSnackbar({
-          message: 'Upload finished!',
-          variant: 'success',
-        });
-        onFinished({
-          id: res.id as string,
-          lifeTime: res.lifeTime as number,
-        });
-      })
-      .catch((err) => {
-        enqueueSnackbar({
-          message: `Upload failed: ${err?.message ?? JSON.stringify(err)}`,
-          variant: 'error',
-        });
-        addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
+      addEntry('Upload', 'Starting...');
+      const res =
+        mode == 'UploadSingle'
+          ? await exfil.uploadSingle(storage.name, tmp, addEntry)
+          : await exfil.uploadChunked(storage.name, tmp, addEntry);
+      addEntry('Upload', 'Done!', 'success');
+      enqueueSnackbar({
+        message: 'Upload finished!',
+        variant: 'success',
       });
+      onFinished({
+        id: res.id as string,
+        lifeTime: res.lifeTime as number,
+      });
+    };
+
+    performUpload().catch((err) => {
+      enqueueSnackbar({
+        message: `Upload failed: ${err?.message ?? JSON.stringify(err)}`,
+        variant: 'error',
+      });
+      addEntry('ERROR', err?.message ?? JSON.stringify(err), 'error');
+    });
   }, [encData, encIv]);
-
-  const theme = useTheme();
-
-  const createRow = (entry: LogEntry, idx: number) => {
-    const backgroundColor = entry.variant
-      ? entry.variant == 'success'
-        ? theme.palette.success.main
-        : theme.palette.error.main
-      : undefined;
-    const color = entry.variant
-      ? theme.palette.getContrastText(backgroundColor as string)
-      : theme.palette.text.primary;
-    return (
-      <TableRow key={idx}>
-        <TableCell sx={{ backgroundColor, color }}>
-          {entry.timestamp.toISOString().split('T')[1].split('.')[0]}
-        </TableCell>
-        <TableCell sx={{ backgroundColor, color }}>{entry.category}</TableCell>
-        <TableCell sx={{ backgroundColor, color }}>{entry.content}</TableCell>
-      </TableRow>
-    );
-  };
 
   return (
     <>
-      <TableContainer component={Paper} sx={{ maxHeight: '300px' }}>
-        <Table aria-label="simple table" size="small" stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>Timestamp</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Output</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {entries.map(createRow)}
-            <tr key="ref" ref={summaryRef}></tr>
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <EventTable entries={entries} />
     </>
   );
 }
@@ -471,7 +416,7 @@ interface UploadInfoElementProps {
 
 function UploadInfoElement({ info }: UploadInfoElementProps) {
   const [remaining, setRemaining] = useState('00:00:00');
-  const [ownNowDate, setOwnNowDate] = useState(moment());
+  const [ownNowDate, _] = useState(moment());
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -500,18 +445,26 @@ function UploadInfoElement({ info }: UploadInfoElementProps) {
 
 interface UploadProps {
   exfil: ExfilExtension;
+  mode: SelectedMode;
   storage: StorageExtension;
 }
 
-export default function BasicHttpUpload({ exfil, storage }: UploadProps) {
+export default function GenericHttpUpload({
+  exfil,
+  storage,
+  mode,
+}: UploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(0);
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null);
 
+  if (mode != 'UploadChunked' && mode != 'UploadSingle')
+    throw new Error(`Unsupported mode ${mode}`);
+
   const steps = ['Data Input', 'Process & Upload', 'Done'];
 
-  const maxSize = exfil.getConfig().single_size;
+  const maxSize = exfil.getConfig().max_total_size;
 
   const getCurrentStepView = () => {
     switch (step) {
@@ -540,6 +493,7 @@ export default function BasicHttpUpload({ exfil, storage }: UploadProps) {
                 setStep(2);
               }}
               maxFileSize={maxSize}
+              mode={mode}
             />
             {step == 2 && uploadInfo != null && (
               <UploadInfoElement info={uploadInfo} />
