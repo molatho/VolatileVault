@@ -1,5 +1,4 @@
 import { expressjwt } from 'express-jwt';
-import config from './config';
 import { generateKeyPairSync } from 'crypto';
 
 export class Keys {

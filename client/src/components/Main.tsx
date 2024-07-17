@@ -3,76 +3,81 @@ import {
   CssBaseline,
   Typography,
   Container,
-  Button,
   Card,
   CardContent,
   CardMedia,
   Stack,
-  TextField,
-  Tab,
-  Tabs,
 } from '@mui/material';
-import React, { useEffect } from 'react';
-import Api, { ApiResponse } from '../utils/Api';
-import Upload from './Upload';
-import Download from './Download';
-import { enqueueSnackbar } from 'notistack';
+import React, { useState } from 'react';
+import Api, { ApiConfigResponse } from '../utils/Api';
+import { SelectedMode } from './ModeSelector';
+import {
+  ExfilDownloadViewProps,
+  ExfilExtension,
+  StorageExtension,
+} from './extensions/Extension';
+import BasicWizard from './BasicWizard';
 
 export default function Main() {
-  const [api, setApi] = React.useState(new Api());
-  const [authenticated, setAuthenticated] = React.useState<boolean | undefined>(
-    undefined
-  );
-  const [totp, setTotp] = React.useState('');
-  const [totpEditAvailable, setTotpEditAvailable] = React.useState(true);
-  const [lastError, setLastError] = React.useState<string | undefined>(
-    undefined
-  );
-  const [tabIdx, setTabIdx] = React.useState(0);
+  const [api, _] = useState(new Api());
+  const [wizardDone, setWizardDone] = useState(false);
+  const [config, setConfig] = useState<ApiConfigResponse | null>(null);
+  const [mode, setMode] = useState<SelectedMode>('None');
+  const [exfil, setExfil] = useState<ExfilExtension | null>(null);
+  const [storage, setStorage] = useState<StorageExtension | null>(null);
 
-  React.useEffect(() => {
-    api
-      .isAuthenticated()
-      .then((res) => setAuthenticated(res.success))
-      .catch((err) => {
-        enqueueSnackbar({
-          message: 'You need to authenticate',
-          variant: 'info',
-        });
-        setAuthenticated(false);
-      });
-  }, []);
+  function onWizardFinished(
+    config: ApiConfigResponse,
+    mode: SelectedMode,
+    exfil: ExfilExtension,
+    storage?: StorageExtension
+  ) {
+    setConfig(config);
+    setMode(mode);
+    setExfil(exfil);
+    setStorage(storage ? storage : null);
+    setWizardDone(true);
+  }
 
-  const onTotpChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setTotp(event.target.value);
-  };
+  function getExfilView() {
+    if (exfil === null) return <>Exfil unset!</>;
 
-  useEffect(() => {
-    if (totp.length !== 6) return;
-    setLastError(undefined);
-    setTotpEditAvailable(false);
-    api
-      .authenticate(totp)
-      .then((res) => {
-        setAuthenticated(res.success);
-        setLastError(res.success ? undefined : res.message);
-        enqueueSnackbar({
-          message: 'Authentication successful',
-          variant: 'success',
-        });
-      })
-      .catch((err: ApiResponse) => {
-        setLastError(err.message);
-        setTimeout(() => {
-          setLastError(undefined);
-          setTotpEditAvailable(true);
-          setTotp('');
-        }, 1000);
-        enqueueSnackbar({ message: err.message, variant: 'error' });
-      });
-  }, [totp]);
+    switch (mode) {
+      case 'UploadSingle': {
+        const View: (props: ExfilDownloadViewProps) => JSX.Element =
+          exfil.uploadSingleView;
+        return <View storage={storage as StorageExtension} />;
+      }
+      case 'DownloadSingle': {
+        const View: () => JSX.Element = exfil.downloadSingleView;
+        return <View />;
+      }
+      case 'UploadChunked': {
+        const View: (props: ExfilDownloadViewProps) => JSX.Element =
+          exfil.uploadChunkedView;
+        return <View storage={storage as StorageExtension} />;
+      }
+      case 'DownloadChunked': {
+        const View: () => JSX.Element = exfil.downloadChunkedView;
+        return <View />;
+      }
+    }
+  }
 
-  const onAuthenticate = () => {};
+  function getModeString() {
+    switch (mode) {
+      case 'UploadSingle':
+        return 'Basic upload';
+      case 'DownloadSingle':
+        return 'Basic download';
+      case 'DownloadChunked':
+        return 'Chunked download';
+      case 'UploadChunked':
+        return 'Chunked upload';
+      default:
+        throw new Error(`Invalid mode ${mode} at this stage!`);
+    }
+  }
 
   return (
     <React.Fragment>
@@ -83,50 +88,24 @@ export default function Main() {
           <CardContent>
             <Stack direction="row" alignItems="center" spacing={1}>
               <Lock color="primary" />
-              <Typography gutterBottom variant="h5" component="div">
+              <Typography variant="h4" component="div">
                 Volatile Vault
               </Typography>
             </Stack>
           </CardContent>
-          {authenticated === undefined && (
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Validating authentication...
-              </Typography>
-            </CardContent>
-          )}
-          {authenticated === false && (
-            <>
-              <CardContent>
-                <Stack direction="row" spacing={2}>
-                  <TextField
-                    label="Code"
-                    id="outlined-code-small"
-                    value={totp}
-                    size="small"
-                    InputProps={{ readOnly: !totpEditAvailable }}
-                    inputProps={{ maxLength: 6 }}
-                    onChange={onTotpChange}
-                    error={lastError !== undefined}
-                  />
-                </Stack>
-              </CardContent>
-            </>
-          )}
-          {authenticated === true && (
-            <CardContent>
-              <Tabs
-                value={tabIdx}
-                onChange={(_, idx) => setTabIdx(idx)}
-                aria-label="basic tabs example"
-              >
-                <Tab label="Upload" />
-                <Tab label="Download" />
-              </Tabs>
-              {tabIdx == 0 && <Upload api={api} />}
-              {tabIdx == 1 && <Download api={api} />}
-            </CardContent>
-          )}
+          <CardContent>
+            {wizardDone === false && (
+              <BasicWizard api={api} onFinished={onWizardFinished} />
+            )}
+            {wizardDone && (
+              <>
+                <Typography variant="h6">
+                  {exfil?.displayName} - {getModeString()}
+                </Typography>
+                {getExfilView()}
+              </>
+            )}
+          </CardContent>
         </Card>
       </Container>
     </React.Fragment>

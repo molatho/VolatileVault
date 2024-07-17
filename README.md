@@ -10,6 +10,7 @@
 </div>
 
 # Screenshots
+
 <div align="center">
   <img width="400px" src="screenshots/screenshot1-select.png" />
   <img width="400px" src="screenshots/screenshot2-upload.png" />
@@ -18,21 +19,30 @@
 
 # Use Cases
 
-* **Data exfiltration**: Operators can upload sensitive files from compromised target systems to exfiltrate data securely, without any reliance on potentially untrustworthy third-parties.
-* **Dropping implants**: Operators can upload implants from their machines and download them on target systems and leverage HTML smuggling to more covertly transmit and deploy their implants. 
+- **Data exfiltration**: Operators can upload sensitive files from compromised target systems to exfiltrate data securely, without any reliance on potentially untrustworthy third-parties.
+- **Dropping implants**: Operators can upload implants from their machines and download them on target systems and leverage HTML smuggling to more covertly transmit and deploy their implants.
 
 # Features
 
-* **Zero trust**: All data is encrypted/decrypted (using AES-GCM) and compressed/decompressed (ZIP DEFLATE) in the browser, no sensitive data hits the backend in plain text and no potentially sensitive key material ever leaves the browser.
-* **Volatile storage**: All uploaded data has a preconfigured life-time (e.g. one hour) after which it gets deleted on the server side. Any previously stored encrypted blobs are removed on the server side upon startup of the server application.
-* **TOTP authentication**: Access to the service is granted by using a shared secret for TOTP authentication, making it easy to use and more resilient to credential leakage.
-* **Configurable**: Specifics such as the maximum allowed file size and life time of uploaded blobs can be configured using `.env` files before deployment of the application.
+- **Security first**: All data is encrypted/decrypted (using AES-GCM) and compressed/decompressed (ZIP DEFLATE) in the browser, no sensitive data hits the backend in plain text and no potentially sensitive key material ever leaves the browser.
+- **Volatile storage**: All uploaded data has a preconfigured life-time (e.g. one hour) after which it gets deleted on the server side. Any previously stored encrypted blobs are removed on the server side upon startup of the server application.
+- **TOTP authentication**: Access to the service is granted by using a shared secret for TOTP authentication, making it easy to use and more resilient to credential leakage.
+- **Configurable**: Specifics such as the maximum allowed file size and life time of uploaded blobs can be configured in the [server](server/README.md)'s `config.yml` file before deployment of the application.
+- **Chunks + HTTPS redirectors**: Upload the encrypted blobs in chunks via a range of HTTP redirectors pointing to the service.
+- **Plugin system**: You can freely configure how data is uploaded/downloaded and where it is stored thanks to Volatile Vault's plugin system which allows the integration of multiple file storages and exfiltration mechanisms.
+
+## Plugin Concept
+
+Volatile Vault allows you to mix and match plugins for file storages ("storages") and exfiltration mechanisms ("exfils") to your heart's content. Storages are plugins that store and retrieve files - this could be the server's filesystem or a cloud storage such as AWS S3. Exfils are data transports that allow you to upload and download files to and from Volatile Vault - this could be a simple built-in HTTP transport or an entirely different protocol such as QUIC.
+
+You can specify which storages and exfils to use by configuring them in (or ommitting them from) your [server](server/README.md)'s configuration.
 
 ## Roadmap
-* **Chunks + HTTPS redirectors**: Upload the encrypted blobs in chunks via a range of HTTP redirectors pointing to the service.
-* **Rate limiting**: Limit the upload speed to the service so uploads won't be as easy to detect as bursts.
-* **Password-encrypted Archives**: Encrypt the archives themselves so they can't be read in plain text on disk.
-* **External blob storage**: Move encrypted blobs to some more scalable service such as S3.
+
+- **Rate limiting**: Limit the upload speed to the service so uploads won't be as easy to detect as bursts.
+- **Password-encrypted Archives**: Encrypt the archives themselves so they can't be read in plain text on disk.
+- **External blob storage**: Move encrypted blobs to some more scalable service such as S3.
+- **Duplicate plugin instances**: Allow plugins to be initialized and used multiple times instead of once per implementation.
 
 ## FAQs
 
@@ -54,15 +64,21 @@ A: This application is not meant to be used over long time periods but only for 
 
 A: This feature is part of the roadmap and (once implemented) will be disabled by default as part of an effort to minimize distribution of the exfiltrated data.
 
+# Usage / Installation
 
-# Installation
+## Deployment
 
-TBD
+1. Install Docker: `docker` and `docker compose` (ref [Install Docker Engine](https://docs.docker.com/engine/install/))
+2. **Configure the [server](server/README.md)** (seriously, you can't skip this) and [client](client/README.md)
+3. Build and start the container by running `docker compose -f docker-compose.prod.yml up`
+
+## Development
+
+1. Install Node.js (v20+): `node` and `npm` (ref [Download Node.js](https://nodejs.org/en/download/package-manager))
+2. Install node dependencies of the client and server by `cd`'ing into their respective subdirectories and issuing `npm i`
+3. **Configure the [server](server/README.md)** and [client](client/README.md)
+4. Start the [server](ref) and [client](ref)
 
 # Contributing
 
-TBD
-
-# Note
-
-TBD
+Pull requests are very welcome!

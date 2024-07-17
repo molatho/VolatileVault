@@ -1,49 +1,115 @@
-import { routes } from './routes';
+import { ConfigInstance } from './config/instance';
+import { getRoutes } from './routes';
 import express, { Response, NextFunction } from 'express';
-import { Keys, jwt } from './jwt';
+import { jwt } from './jwt';
 import { Request as JWTRequest, UnauthorizedError } from 'express-jwt';
-import { FsUtils } from './fs';
 import bodyParser from 'body-parser';
-import cron from 'node-cron';
 import cors from 'cors';
-import config from './config';
+import nocache from 'nocache';
+import { FileSystemStorageProvider } from './extensions/storage/FileSystem/filesystem';
+import { ExtensionRepository } from './extensions/repository';
+import { BasicHTTPExfilProvider } from './extensions/exfil/BasicHttp/basichttp';
+import { Logger } from './logging';
+import { AwsCloudFrontExfilProvider } from './extensions/exfil/AwsCloudFront/awscloudfront';
 
-FsUtils.init();
+const EXTENSIONS = [
+  new BasicHTTPExfilProvider(),
+  new FileSystemStorageProvider(),
+  new AwsCloudFrontExfilProvider(),
+];
 
-const app = express();
+const logger = Logger.Instance.defaultLogger;
 
-app.use(cors());
+logger.info('Starting up...');
 
-app.use(bodyParser.urlencoded({ extended: false }));
+const main = async (): Promise<void> => {
+  logger.info('Initializing config...');
+  await ConfigInstance.init();
 
-app.use(
-  '/api',
-  jwt.unless({ path: [{ url: '/api/auth', method: 'POST' }] }),
-  (
-    err: UnauthorizedError,
-    req: JWTRequest,
-    res: Response,
-    next: NextFunction
-  ) => {
-    if (err || !req.auth?.sub)
-      return res.status(401).json({ message: 'Authentication failure' });
-    return next();
+  for (const extension of EXTENSIONS) {
+    logger.info(`Initializing extension ${extension.name}...`);
+    await extension.init(ConfigInstance.Inst);
   }
-);
 
-app.use(routes);
+  const failed = EXTENSIONS.filter((e) => e.state == 'InitializationError');
+  if (failed.length > 0) {
+    throw new Error(
+      `The following extension(s) failed to initialize: ${failed
+        .map((f) => f.name)
+        .join(', ')}`
+    );
+  }
 
-app.use((error, req, res, next) => {
-  return res.status(400).json({ message: error?.message ?? 'Failure' });
-});
+  if (ExtensionRepository.getInstance().exfils.length == 0)
+    throw new Error(
+      'No exfil provider was initialized: verify that at least one is configured.'
+    );
 
-app.use(express.static('public'));
+  if (ExtensionRepository.getInstance().storages.length == 0)
+    throw new Error(
+      'No storage provider was initialized: verify that at least one is configured.'
+    );
 
-cron.schedule('0 * * * * *', () => {
-  FsUtils.cleanup(1000 * 60 * config.FILE_EXPIRY);
-});
+  const app = express();
 
-const PORT = config.BACKEND_PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Application started on port ${PORT}!`);
+  app.disable('x-powered-by');
+
+  app.use(nocache());
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        Promise.all(
+          ExtensionRepository.getInstance().exfils.map((e) => e.hosts)
+        ).then((all) => cb(null, all.flat()));
+      },
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type'],
+      credentials: true,
+    })
+  ); // TODO: Disable in prod!
+
+  app.use(bodyParser.urlencoded({ extended: false }));
+
+  app.use(
+    '/api',
+    jwt.unless({ path: [{ url: '/api/auth', method: 'POST' }] }),
+    (
+      err: UnauthorizedError,
+      req: JWTRequest,
+      res: Response,
+      next: NextFunction
+    ) => {
+      if (err || !req.auth?.sub)
+        return res.status(401).json({ message: 'Authentication failure' });
+      return next();
+    }
+  );
+
+  app.use(getRoutes());
+  for (const extension of ExtensionRepository.getInstance().exfils) {
+    logger.info(`Installing routes for ${extension.name}...`);
+    await extension.installRoutes(app);
+  }
+
+  app.use((error, req, res, next) => {
+    return res.status(400).json({ message: error?.message ?? 'Failure' });
+  });
+
+  app.use(express.static('public'));
+
+  for (const extension of ExtensionRepository.getInstance().exfils) {
+    await extension.installCron();
+  }
+  for (const extension of ExtensionRepository.getInstance().storages) {
+    await extension.installCron();
+  }
+
+  const PORT = ConfigInstance.Inst.general.port || 3000;
+  app.listen(PORT, () => {
+    logger.info(`Application started on port ${PORT}!`);
+  });
+};
+
+main().catch((error) => {
+  logger.error(error.message);
 });

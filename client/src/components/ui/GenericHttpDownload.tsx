@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import Api from '../utils/Api';
-import EnterPassword from './EnterPassword';
+import EnterPassword from '../EnterPassword';
 import {
   Box,
   Button,
@@ -16,23 +15,34 @@ import {
   Typography,
 } from '@mui/material';
 import { enqueueSnackbar } from 'notistack';
-import { formatSize } from '../utils/Files';
-import { decryptSymmetric } from '../utils/Crypto';
+import { formatSize } from '../../utils/Files';
+import { decryptSymmetric } from '../../utils/Crypto';
 import DownloadIcon from '@mui/icons-material/Download';
 import { saveAs } from 'file-saver';
 import jszip from 'jszip';
 import moment from 'moment';
+import { ExfilExtension } from '../extensions/Extension';
+import { SelectedMode } from '../ModeSelector';
+import EventTable, { createLogEntry, EventEntry } from './EventTable';
 
 interface DownloadBlobProps {
-  api: Api;
+  exfil: ExfilExtension;
+  mode: SelectedMode;
   enabled?: boolean;
   onDownloaded: (id: string, blob: ArrayBuffer) => void;
+  onExfilEvent: (
+    category: string,
+    content: string,
+    variant?: 'error' | 'success'
+  ) => void;
 }
 
-export function DownloadBlob({
-  api,
+function DownloadBlob({
+  exfil,
+  mode,
   enabled = true,
   onDownloaded,
+  onExfilEvent,
 }: DownloadBlobProps) {
   const [id, setId] = useState('');
   const [canDownload, setCanDownload] = useState(false);
@@ -47,30 +57,33 @@ export function DownloadBlob({
     setId(event.currentTarget.value);
   };
 
-  const onDownload = () => {
+  const onDownload = async () => {
     setCanDownload(false);
     setCanEdit(false);
     setDownloadError('');
-    api
-      .download(id)
-      .then((res) => {
-        enqueueSnackbar({
-          message: `Downloaded ${formatSize(res.data.byteLength)} of data!`,
-          variant: 'success',
-        });
-        onDownloaded(id, res.data);
-      })
-      .catch((err) => {
-        enqueueSnackbar({
-          message: `Download failed: ${err?.message ?? JSON.stringify(err)}`,
-          variant: 'error',
-        });
-        setDownloadError(err?.message ?? 'Download error');
-        setTimeout(() => {
-          setCanDownload(true);
-          setCanEdit(true);
-        }, 3000);
+    try {
+      //TODO: add EventTable!
+      const res =
+        mode == 'DownloadSingle'
+          ? await exfil.downloadSingle(id, onExfilEvent)
+          : await exfil.downloadChunked(id, onExfilEvent);
+
+      enqueueSnackbar({
+        message: `Downloaded ${formatSize(res.data.byteLength)} of data!`,
+        variant: 'success',
       });
+      onDownloaded(id, res.data);
+    } catch (err) {
+      enqueueSnackbar({
+        message: `Download failed: ${err}`,
+        variant: 'error',
+      });
+      setDownloadError('Download error');
+      setTimeout(() => {
+        setCanDownload(true);
+        setCanEdit(true);
+      }, 3000);
+    }
   };
 
   return (
@@ -101,10 +114,11 @@ export function DownloadBlob({
 }
 
 interface DownloadProps {
-  api: Api;
+  exfil: ExfilExtension;
+  mode: SelectedMode;
 }
 
-export default function Download({ api }: DownloadProps) {
+export default function GenericHttpDownload({ exfil, mode }: DownloadProps) {
   interface FileInfo {
     name: string;
     date: Date;
@@ -115,6 +129,10 @@ export default function Download({ api }: DownloadProps) {
   const [canDecrypt, setCanDecrypt] = useState(true);
   const [isDecrypted, setIsDecrypted] = useState(false);
   const [files, setFiles] = useState<FileInfo[]>([]);
+  var [entries, setEntries] = useState<EventEntry[]>([]);
+
+  if (mode != 'DownloadChunked' && mode != 'DownloadSingle')
+    throw new Error(`Unsupported mode ${mode}`);
 
   const doDecrypt = () => {
     setCanDecrypt(false);
@@ -166,15 +184,26 @@ export default function Download({ api }: DownloadProps) {
     saveAs(new Blob([blob as ArrayBuffer]), `${id}.zip`);
   };
 
+  const addEntry = (
+    category: string,
+    content: string,
+    variant?: 'error' | 'success'
+  ) => {
+    entries = [...entries, createLogEntry(category, content, variant)];
+    setEntries(entries);
+  };
+
   return (
     <Stack direction="column" spacing={4} mt={2}>
       <DownloadBlob
-        api={api}
+        exfil={exfil}
+        mode={mode}
         onDownloaded={(id, blob) => {
           setBlob(blob);
           setId(id);
         }}
         enabled={blob == null}
+        onExfilEvent={addEntry}
       />
       <EnterPassword
         onPasswordEntered={setPassword}
@@ -225,6 +254,12 @@ export default function Download({ api }: DownloadProps) {
           Download
         </Button>
       </Box>
+
+      <Typography variant="h5" px={2}>
+        Log
+      </Typography>
+
+      <EventTable entries={entries} />
     </Stack>
   );
 }
