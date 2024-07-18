@@ -25,6 +25,7 @@ The config consists of three major parts:
 Please refer to the individual plugins' README files for more details on their exact configuration:
 * Storages
   * [filesystem](src/extensions/storage/FileSystem/README.md)
+  * [awss3](src/extensions/storage/AwsS3/README.md)
 * Exfils
   * [basichttp](src/extensions/exfil/BasicHttp/README.md)
   * [awscloudfront](src/extensions/exfil/AwsCloudFront/README.md)
