@@ -156,7 +156,7 @@ export class CloudFrontWrapper {
     } catch (error) {
       // TODO: Catch ratelimiting error and retry automatically after waiting
       this.logger.error(
-        `Error releasing CloudFront domainss: ${error?.message ?? error}`
+        `Error releasing CloudFront domains: ${error?.message ?? error}`
       );
       throw error;
     }

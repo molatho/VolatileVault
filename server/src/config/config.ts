@@ -24,8 +24,6 @@ export interface StorageFileSystem extends BaseStorage {
   folder: string;
 }
 
-export interface StorageAwsS3 extends BaseStorage, BaseAwsSettings {}
-
 export interface Exfil {
   basichttp?: ExfilBasicHTTP;
   awscloudfront?: ExfilAwsCloudFront;
@@ -61,4 +59,10 @@ export interface ExfilAwsCloudFront extends BaseExfil, BaseAwsSettings {
   folder: string;
   upload: TransferConfig;
   download: TransferConfig;
+}
+
+export interface StorageAwsS3 extends BaseStorage, BaseAwsSettings {
+  bucket: string;
+  generate_presigned_urls: boolean;
+  user_arn: string;
 }
