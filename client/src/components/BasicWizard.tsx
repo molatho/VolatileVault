@@ -300,7 +300,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
         </Step>
         {/* 4 - Select storage */}
         <Step key={Steps.SelectStorage}>
-          <StepButton disabled={step <= Steps.SelectStorage} onClick={navToStorageSelect}>
+          <StepButton disabled={step <= Steps.SelectStorage || !isUploadMode} onClick={navToStorageSelect}>
             <Typography variant="subtitle1">
               {selectedStorage == null ? (
                 isUploadMode ? (

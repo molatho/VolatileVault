@@ -7,6 +7,7 @@ import {
   CardContent,
   CardMedia,
   Stack,
+  IconButton,
 } from '@mui/material';
 import React, { useState } from 'react';
 import Api, { ApiConfigResponse } from '../utils/Api';
@@ -17,6 +18,7 @@ import {
   StorageExtension,
 } from './extensions/Extension';
 import BasicWizard from './BasicWizard';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 export default function Main() {
   const [api, _] = useState(new Api());
@@ -99,9 +101,14 @@ export default function Main() {
             )}
             {wizardDone && (
               <>
-                <Typography variant="h6">
-                  {exfil?.displayName} - {getModeString()}
-                </Typography>
+                <Stack direction="row" alignItems="center">
+                  <IconButton aria-label="delete" size="large" onClick={()=>setWizardDone(false)}>
+                    <ArrowBackIcon />
+                  </IconButton>
+                  <Typography variant="h6">
+                    {exfil?.displayName} - {getModeString()}
+                  </Typography>
+                </Stack>
                 {getExfilView()}
               </>
             )}
