@@ -7,3 +7,5 @@ npm-debug.log*
 config.yaml
 
 /logs/*.log*
+
+*.pem
