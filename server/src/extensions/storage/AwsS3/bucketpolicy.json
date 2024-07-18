@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<CHANGEME>"
+      },
+      "Action": "s3:GetObject",
+      "Resource": "<CHANGEME>",
+      "Condition": {
+        "StringEquals": {
+          "s3:ExistingObjectTag/HasMetadata": "true"
+        }
+      }
+    }
+  ]
+}

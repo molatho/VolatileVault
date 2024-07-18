@@ -11,11 +11,13 @@ import { ExtensionRepository } from './extensions/repository';
 import { BasicHTTPExfilProvider } from './extensions/exfil/BasicHttp/basichttp';
 import { Logger } from './logging';
 import { AwsCloudFrontExfilProvider } from './extensions/exfil/AwsCloudFront/awscloudfront';
+import { AwsS3StorageProvider } from './extensions/storage/AwsS3/awss3';
 
 const EXTENSIONS = [
   new BasicHTTPExfilProvider(),
   new FileSystemStorageProvider(),
   new AwsCloudFrontExfilProvider(),
+  new AwsS3StorageProvider()
 ];
 
 const logger = Logger.Instance.defaultLogger;

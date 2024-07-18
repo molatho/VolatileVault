@@ -1,10 +1,9 @@
 import {
   StorageData,
-  StorageInformation,
   StorageProvider,
   StorageProviderCapabilities,
 } from '../provider';
-import { BaseExtension, ExtensionInfo } from '../../extension';
+import { BaseExtension, ExtensionInfo, FileUploadInformation } from '../../extension';
 import {
   StorageFileSystem,
   Config,
@@ -62,7 +61,7 @@ export class FileSystemStorageProvider
     }
   }
 
-  async store(data: StorageData): Promise<StorageInformation> {
+  async store(data: StorageData): Promise<FileUploadInformation> {
     this.logger.debug(`Storing ${data.size} bytes`);
     const info = await this.fs.putFile(data.stream);
     this.logger.debug(`Done: ${info.id}`);
@@ -72,7 +71,7 @@ export class FileSystemStorageProvider
     };
   }
 
-  async retrieve(info: StorageInformation): Promise<StorageData> {
+  async retrieve(info: FileUploadInformation): Promise<StorageData> {
     const [stream, size] = await this.fs.getFile(info.id);
     return {
       stream,
@@ -80,7 +79,7 @@ export class FileSystemStorageProvider
     };
   }
 
-  async remove(info: StorageInformation): Promise<void> {
+  async remove(info: FileUploadInformation): Promise<void> {
     await this.fs.removeFile(info.id);
   }
 

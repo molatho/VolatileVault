@@ -6,17 +6,26 @@ import { BasicHttpExfil } from './exfil/BasicHttpExfil';
 import { DummyStorage } from './storage/DummyStorage';
 import { FileSystem } from './storage/FileSystem';
 import { AwsCloudFrontExfil } from './exfil/AwsCloudFrontExfil';
+import { AwsS3 } from './storage/AwsS3';
 
 export function initializeExfilExtensions(
   api: Api,
   config: ApiConfigResponse
 ): ExfilExtension[] {
   if (Config.DEBUG)
-    return [new BasicHttpExfil(api, config), new AwsCloudFrontExfil(api, config), new DummyExfil(api, config)];
-  else return [new BasicHttpExfil(api, config), new AwsCloudFrontExfil(api, config)];
+    return [
+      new BasicHttpExfil(api, config),
+      new AwsCloudFrontExfil(api, config),
+      new DummyExfil(api, config),
+    ];
+  else
+    return [
+      new BasicHttpExfil(api, config),
+      new AwsCloudFrontExfil(api, config),
+    ];
 }
 
 export function getStorages(): StorageExtension[] {
-  if (Config.DEBUG) return [new FileSystem(), new DummyStorage()];
-  else return [new FileSystem()];
+  if (Config.DEBUG) return [new FileSystem(), new AwsS3(), new DummyStorage()];
+  else return [new FileSystem(), new AwsS3()];
 }

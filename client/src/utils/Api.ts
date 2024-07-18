@@ -54,6 +54,7 @@ export interface ApiConfigAwsCloudFrontExfil extends ApiConfigBaseExfil {
 
 export interface ApiConfigStorageCollection {
   filesystem?: ApiConfigItem<ApiConfigBaseStorage>;
+  awss3?: ApiConfigItem<ApiConfigBaseStorage>;
 }
 
 export interface ApiConfigBaseStorage {
