@@ -3,6 +3,7 @@ general:
   port: 8888
   totp_secret: '<changeme>'
   jwt_expiry: 60
+  ip: '0.0.0.0'
 storage:
   filesystem:
     folder: './files_basic'

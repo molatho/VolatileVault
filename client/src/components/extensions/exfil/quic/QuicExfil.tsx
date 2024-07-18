@@ -13,18 +13,17 @@ import {
   ExfilUploadFn,
   ReportEvent,
 } from '../../Extension';
-import QuicDownload from './QuicDownload';
-import QuicUpload from './QuicUpload';
+import GenericHttpDownload from '../../../ui/GenericHttpDownload';
+import GenericHttpUpload from '../../../ui/GenericHttpUpload';
 import WebTransportService from './WebTransportService';
 
 export class QuicExfil extends BaseExfilExtension {
- 
   get downloadSingleView(): ExfilDownloadFn {
-    return () => <QuicDownload exfil={this} />;
+    return () => <GenericHttpDownload exfil={this} mode='DownloadSingle'/>;
   }
   get uploadSingleView(): ExfilUploadFn {
     return ({ storage }: ExfilDownloadViewProps) => (
-      <QuicUpload exfil={this} storage={storage} />
+      <GenericHttpUpload exfil={this} storage={storage} mode='UploadSingle'/>
     );
   }
   get configView(): ConfigFn {
@@ -134,29 +133,10 @@ export class QuicExfil extends BaseExfilExtension {
     }
   }
 
-  initChunkDownload(
-    storage: string,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiResponse> {
+  downloadChunked(id: string, reportEvent?: ReportEvent | undefined): Promise<ApiDownloadResponse> {
     throw new Error('Method not implemented.');
   }
-  initChunkUpload(
-    storage: string,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiResponse> {
-    throw new Error('Method not implemented.');
-  }
-  downloadChunk(
-    id: string,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiDownloadResponse> {
-    throw new Error('Method not implemented.');
-  }
-  uploadChunk(
-    storage: string,
-    data: ArrayBuffer,
-    reportEvent?: ReportEvent | undefined
-  ): Promise<ApiUploadResponse> {
+  uploadChunked(storage: string, data: ArrayBuffer, reportEvent?: ReportEvent | undefined): Promise<ApiUploadResponse> {
     throw new Error('Method not implemented.');
   }
   addHost(reportEvent: ReportEvent): Promise<string> {

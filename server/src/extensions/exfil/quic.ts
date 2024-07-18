@@ -59,10 +59,6 @@ export class QuicExfilProvider
     return Promise.resolve(this.config.hosts);
   }
 
-  installServer(): Promise<void> {
-    throw new Error('Method not supported.');
-  }
-
   installRoutes(app: Express): Promise<void> {
     return Promise.resolve();
   }
@@ -78,20 +74,17 @@ export class QuicExfilProvider
   async downloadSingle(info: FileInformation): Promise<BinaryData> {
     throw new Error('Method not supported.');
   }
-  initChunkDownload(info: any): string {
-    throw new Error('Method not supported.');
+  initChunkUpload(storage: string, size: number): Promise<string> {
+    throw new Error('Method not implemented.');
   }
-  initChunkUpload(storage: string, info: any): string {
-    throw new Error('Method not supported.');
+  initChunkDownload(info: FileInformation): Promise<string> {
+    throw new Error('Method not implemented.');
   }
-  uploadChunk(
-    storage: string,
-    data: BinaryData
-  ): Promise<FileRetrievalInformation> {
-    throw new Error('Method not supported.');
+  uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileRetrievalInformation> {
+    throw new Error('Method not implemented.');
   }
-  downloadChunk(info: FileInformation): BinaryData {
-    throw new Error('Method not supported.');
+  downloadChunk(transferId: string, chunkNo: number): Promise<BinaryData> {
+    throw new Error('Method not implemented.');
   }
   addHost(): Promise<string> {
     throw new Error('Method not supported.');

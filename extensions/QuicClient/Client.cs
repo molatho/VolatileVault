@@ -11,7 +11,8 @@ namespace QuicClient
 {
     class Client
     {
-        private const string SERVER_ADDRESS = "172.24.235.198";
+        //private const string SERVER_ADDRESS = "172.24.235.198";
+        private const string SERVER_ADDRESS = "pe.volatilevault.com";
         private const int SERVER_PORT = 1235;
         private const string JWT_TOKEN = "";
 
@@ -24,7 +25,17 @@ namespace QuicClient
             }
 
             IPAddress ip;
-            IPAddress.TryParse(SERVER_ADDRESS, out ip);
+            if (!IPAddress.TryParse(SERVER_ADDRESS, out ip))
+            {
+                IPAddress[] addresses = Dns.GetHostAddresses(SERVER_ADDRESS);
+                if(addresses.Length == 0)
+                {
+                    Console.WriteLine($"Failed to resolve {SERVER_ADDRESS}.");
+                    return;
+                }else{
+                    ip = addresses[0];
+                }
+            }
 
             var clientOptions = new QuicClientConnectionOptions
             {

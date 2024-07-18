@@ -11,11 +11,13 @@ import { ExtensionRepository } from './extensions/repository';
 import { BasicHTTPExfilProvider } from './extensions/exfil/BasicHttp/basichttp';
 import { Logger } from './logging';
 import { AwsCloudFrontExfilProvider } from './extensions/exfil/AwsCloudFront/awscloudfront';
+import { QuicExfilProvider } from './extensions/exfil/quic';
 
 const EXTENSIONS = [
   new BasicHTTPExfilProvider(),
   new FileSystemStorageProvider(),
   new AwsCloudFrontExfilProvider(),
+  new QuicExfilProvider(),
 ];
 
 const logger = Logger.Instance.defaultLogger;
