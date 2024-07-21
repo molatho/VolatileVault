@@ -1,18 +1,6 @@
 import { Readable } from 'node:stream';
-import { Extension } from '../extension';
+import { Extension, FileUploadInformation } from '../extension';
 import {  BaseStorage } from '../../config/config';
-
-/**
- * Holds information about an uploaded item, can be extended by individual storage providers
- *
- * @export
- * @interface StorageInformation
- * @typedef {StorageInformation}
- */
-export interface StorageInformation {
-  id: string; // ID of a stored item
-  creationDate?: Date; // Date of item creation, used for automated removal
-}
 
 
 /**
@@ -46,7 +34,7 @@ export interface StorageProvider
   extends Extension<StorageProviderCapabilities> {
   get config() : BaseStorage;
   has(id: string): Promise<boolean>;
-  store(data: StorageData): Promise<StorageInformation>;
-  retrieve(info: StorageInformation): Promise<StorageData>;
-  remove(info: StorageInformation): Promise<void>;
+  store(data: StorageData): Promise<FileUploadInformation>;
+  retrieve(info: FileUploadInformation): Promise<StorageData>;
+  remove(info: FileUploadInformation): Promise<void>;
 }

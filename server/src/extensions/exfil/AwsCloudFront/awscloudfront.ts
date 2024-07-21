@@ -12,7 +12,11 @@ import {
 import { FsUtils } from '../../../fs';
 import { Logger } from '../../../logging';
 import { readFixedChunks } from '../../../streams';
-import { BaseExtension, ExtensionInfo } from '../../extension';
+import {
+  BaseExtension,
+  ExtensionInfo,
+  FileUploadInformation,
+} from '../../extension';
 import { ExtensionRepository } from '../../repository';
 import { CloudFrontWrapper } from './wrapper';
 import {
@@ -20,7 +24,6 @@ import {
   ExfilProvider,
   ExfilProviderCapabilities,
   FileInformation,
-  FileRetrievalInformation,
 } from '../provider';
 import cron from 'node-cron';
 import MultiStream from 'multistream';
@@ -182,8 +185,7 @@ export class AwsCloudFrontExfilProvider
     if (this.config) {
       await this.fs.init(this.config.folder);
 
-      this.logger.debug('Initializing CloudFront client...');
-
+      this.logger.debug('Validating configuration...');
       if (
         !this.validateTransferConfig(this.config.download, 'Download') ||
         !this.validateTransferConfig(this.config.upload, 'Upload')
@@ -192,6 +194,7 @@ export class AwsCloudFrontExfilProvider
         return;
       }
 
+      this.logger.debug('Initializing CloudFront client...');
       this.client = new CloudFrontWrapper(
         this.config.access_key_id,
         this.config.secret_access_key,
@@ -202,13 +205,10 @@ export class AwsCloudFrontExfilProvider
 
       this.logger.debug('Validating credentials...');
 
-      // TODO: Add check back in; temporarily disabled to avoid spamming API
-      // if (
-      //   (await this.client.validateCredentials()) == false
-      // ) {
-      //   this.state = 'InitializationError';
-      //   return;
-      // }
+      if ((await this.client.validateCredentials()) == false) {
+        this.state = 'InitializationError';
+        return;
+      }
 
       this.logger.info('Initialized & validated credentials');
       await this.client.getCachePolicyId();
@@ -362,7 +362,7 @@ export class AwsCloudFrontExfilProvider
             size: body.length,
           });
 
-          return res.json({ message: 'Chunk uploaded', id: result.id });
+          return res.json({ message: 'Chunk uploaded', ...result });
         } catch (error) {
           this.logger.error(
             `Error: ${error?.message ?? JSON.stringify(error)}`
@@ -579,7 +579,7 @@ export class AwsCloudFrontExfilProvider
     transferId: string,
     chunkNo: number,
     data: BinaryData
-  ): Promise<FileRetrievalInformation> {
+  ): Promise<FileUploadInformation> {
     const transfer = this.uploads.find((t) => t.id === transferId);
     if (chunkNo < 0 || chunkNo > transfer.chunks.length)
       throw new Error(`Invalid chunk number ${chunkNo}`);
@@ -630,7 +630,7 @@ export class AwsCloudFrontExfilProvider
       await this.client.releaseDistributions(transferId);
 
     // TODO: How do we handle termination date info (for UI) here?
-    return { id: storageInfo.id };
+    return { id: storageInfo.id, url: storageInfo.url };
   }
 
   async initChunkDownload(info: FileInformation): Promise<string> {
@@ -700,7 +700,7 @@ export class AwsCloudFrontExfilProvider
   uploadSingle(
     storage: string,
     data: BinaryData
-  ): Promise<FileRetrievalInformation> {
+  ): Promise<FileUploadInformation> {
     throw new Error('Method not supported.');
   }
   downloadSingle(info: FileInformation): Promise<BinaryData> {

@@ -1,5 +1,5 @@
 import { Readable } from 'node:stream';
-import { Extension } from '../extension';
+import { Extension, FileUploadInformation } from '../extension';
 import express from 'express';
 import { BaseExfil } from '../../config/config';
 
@@ -12,11 +12,6 @@ import { BaseExfil } from '../../config/config';
  */
 export interface FileInformation {
   id: string; // ID of an uploaded item
-}
-
-export interface FileRetrievalInformation {
-  id?: string; // ID of an uploaded item
-  url?: string; // URL at which to download the uploaded item
 }
 
 /**
@@ -70,13 +65,13 @@ export interface ExfilProvider extends Extension<ExfilProviderCapabilities> {
   uploadSingle(
     storage: string,
     data: BinaryData
-  ): Promise<FileRetrievalInformation>;
+  ): Promise<FileUploadInformation>;
   downloadSingle(info: FileInformation): Promise<BinaryData>;
 
   // Chunked up/downloads
   initChunkUpload(storage: string, size: number): Promise<string>; // TODO: Define info type
   initChunkDownload(info: FileInformation): Promise<string>;
-  uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileRetrievalInformation>;
+  uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileUploadInformation>;
   downloadChunk(transferId: string, chunkNo: number): Promise<BinaryData>;
 
   // Hosts management

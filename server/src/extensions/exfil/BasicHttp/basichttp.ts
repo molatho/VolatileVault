@@ -3,7 +3,7 @@ import express, { Express, Request, Response } from 'express';
 import { Readable } from 'node:stream';
 import winston from 'winston';
 import { Config, ExfilBasicHTTP } from '../../../config/config';
-import { BaseExtension, ExtensionInfo } from '../../extension';
+import { BaseExtension, ExtensionInfo, FileUploadInformation } from '../../extension';
 import { ExtensionRepository } from '../../repository';
 import { Logger } from '../../../logging';
 import {
@@ -11,7 +11,6 @@ import {
   ExfilProvider,
   ExfilProviderCapabilities,
   FileInformation,
-  FileRetrievalInformation,
 } from '../provider';
 
 export class BasicHTTPExfilProvider
@@ -161,7 +160,7 @@ export class BasicHTTPExfilProvider
   async uploadSingle(
     storageName: string,
     data: BinaryData
-  ): Promise<FileRetrievalInformation> {
+  ): Promise<FileUploadInformation> {
     // Validate specified storage
     var storage = ExtensionRepository.getInstance().getStorage(storageName);
 
@@ -169,6 +168,7 @@ export class BasicHTTPExfilProvider
     var file = await storage.store(data);
     return {
       id: file.id,
+      url: file.url
     };
   }
 
@@ -186,7 +186,7 @@ export class BasicHTTPExfilProvider
   initChunkUpload(storage: string, size: number): Promise<string> {
     throw new Error('Method not supported.');
   }
-  uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileRetrievalInformation> {
+  uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileUploadInformation> {
     throw new Error('Method not supported.');
   }
   downloadChunk(transferId: string, chunkNo: number): Promise<BinaryData> {
