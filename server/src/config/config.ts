@@ -9,7 +9,7 @@ export interface Config {
 }
 
 export interface General {
-  ip: string;
+  host: string;
   port: number;
   totp_secret: string;
   jwt_expiry: number;
@@ -37,8 +37,14 @@ export interface BaseExfil {
   chunk_size?: number;
 }
 
+export interface ExfilBasicHTTPServer {
+  host: string;
+  port: number;
+}
+
 export interface ExfilBasicHTTP extends BaseExfil {
   hosts: string[];
+  server?: ExfilBasicHTTPServer;
 }
 
 export interface BaseAwsSettings {

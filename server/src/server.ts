@@ -78,7 +78,7 @@ const main = async (): Promise<void> => {
       credentials: true,
     })
   ); // TODO: Disable in prod!
-
+ 
   app.use(bodyParser.urlencoded({ extended: false }));
 
   app.use(
@@ -116,11 +116,12 @@ const main = async (): Promise<void> => {
   }
 
   const PORT = ConfigInstance.Inst.general.port || 3000;
-  app.listen(PORT, () => {
-    logger.info(`Application started on port ${PORT}!`);
+  const HOST = ConfigInstance.Inst.general.host || 'localhost';
+  app.listen(PORT, HOST, () => {
+    logger.info(`VolatileVault is listening at ${HOST}:${PORT}!`);
   });
 };
 
-main();/*.catch((error) => {
+main().catch((error) => {
   logger.error(error.message);
-});*/
+});

@@ -1,5 +1,5 @@
 import bodyParser from 'body-parser';
-import express, { Express, Request, Response } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import { Readable } from 'node:stream';
 import winston from 'winston';
 import { ExfilBasicHTTP, ExtensionItem } from '../../../config/config';
@@ -16,6 +16,9 @@ import {
   ExfilProviderCapabilities,
   FileInformation,
 } from '../provider';
+import nocache from 'nocache';
+import { jwt } from '../../../jwt';
+import { Request as JWTRequest, UnauthorizedError } from 'express-jwt';
 
 export class BasicHTTPExfilProvider
   extends BaseExtension<ExfilProviderCapabilities, ExfilBasicHTTP>
@@ -70,9 +73,32 @@ export class BasicHTTPExfilProvider
     return Promise.resolve(this.config.hosts);
   }
 
-  installRoutes(app: Express): Promise<void> {
+  async installRoutes(backendApp: Express): Promise<void> {
     // Upload
     const uploadRoute = express.Router();
+
+    const app = this.config.server ? express() : backendApp;
+
+    if (this.config.server) {
+      app.disable('x-powered-by');
+      app.use(nocache());
+      app.use(bodyParser.urlencoded({ extended: false }));
+
+      app.use(
+        '/api',
+        jwt.unless({ path: [{ url: '/api/auth', method: 'POST' }] }), // TODO: We shouldn't hardcode the path a second time...
+        (
+          err: UnauthorizedError,
+          req: JWTRequest,
+          res: Response,
+          next: NextFunction
+        ) => {
+          if (err || !req.auth?.sub)
+            return res.status(401).json({ message: 'Authentication failure' });
+          return next();
+        }
+      );
+    }
 
     uploadRoute.use(
       bodyParser.raw({
@@ -167,7 +193,15 @@ export class BasicHTTPExfilProvider
     );
     app.use(downloadRoute);
 
-    return Promise.resolve();
+    if (this.config.server) {
+      return new Promise((res, rej) => {
+        app.listen(this.config.server.port, this.config.server.host, () => {
+          this.logger.info(`Listening on ${this.config.server.host}:${this.config.server.port}`)
+          res();
+        });
+        app.on('error', rej);
+      });
+    }
   }
 
   async uploadSingle(
