@@ -4,6 +4,7 @@ import Api, {
   ApiUploadResponse,
   ApiResponse,
   ApiConfigAwsCloudFrontExfil,
+  ExtensionItem,
 } from '../../../utils/Api';
 import {
   BaseExfilExtension,
@@ -18,7 +19,18 @@ import GenericHttpDownload from '../../ui/GenericHttpDownload';
 import GenericHttpUpload from '../../ui/GenericHttpUpload';
 import { formatSize } from '../../../utils/Files';
 
-export class AwsCloudFrontExfil extends BaseExfilExtension {
+export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFrontExfil> {
+  public static get extension_name(): string {
+    return 'awscloudfront';
+  }
+
+  public static create(
+    api: Api,
+    cfg: ExtensionItem<any>
+  ): BaseExfilExtension<ApiConfigAwsCloudFrontExfil> {
+    return new AwsCloudFrontExfil(api, cfg);
+  }
+
   get downloadSingleView(): ExfilDownloadFn {
     throw new Error('Method not implemented.');
   }
@@ -36,29 +48,18 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
       <GenericHttpUpload exfil={this} storage={storage} mode="UploadChunked" />
     );
   }
-
-  get name(): string {
-    return 'awscloudfront';
-  }
-  get displayName(): string {
-    return 'AWS CloudFront';
-  }
   get description(): string {
-    return 'Uses either pre-deployed or dynamically deployed CloudFront distributions to proxy uploads and downloads through. Files are zipped & encrypted before upload and decrypted & unzipped after download. Uploads and downloads use a REST interface and data is transferred in multiple blobs to different hosts. Transfer looks like regular HTTP uploads/downloads.';
+    const desc =
+      'Uses either pre-deployed or dynamically deployed CloudFront distributions to proxy uploads and downloads through. Files are zipped & encrypted before upload and decrypted & unzipped after download. Uploads and downloads use a REST interface and data is transferred in multiple blobs to different hosts. Transfer looks like regular HTTP uploads/downloads.';
+    if (this.cfg.description) return desc + ' ' + this.cfg.description;
+    return desc;
   }
   get capabilities(): ExfilProviderCapabilities[] {
     return ['UploadChunked', 'DownloadChunked'];
   }
-  override isPresent(): boolean {
-    return (
-      this.config.exfils.awscloudfront !== undefined &&
-      this.config.exfils.awscloudfront !== null
-    );
-  }
-  getConfig(): ApiConfigAwsCloudFrontExfil {
-    if (!this.config.exfils.awscloudfront)
-      throw new Error('Attempted to access missing awscloudfront config!');
-    return this.config.exfils.awscloudfront.info as ApiConfigAwsCloudFrontExfil;
+
+  private get exfilConfig(): ApiConfigAwsCloudFrontExfil {
+    return this.cfg.info! as ApiConfigAwsCloudFrontExfil;
   }
 
   downloadSingle(
@@ -92,7 +93,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
           }, Size: ${formatSize(initChunkedData.size)}`
         );
 
-      if (this.getConfig().download.mode == 'Dynamic')
+      if (this.exfilConfig.download.mode == 'Dynamic')
         reportEvent &&
           reportEvent(
             'Control',
@@ -189,12 +190,12 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
         }, Size: ${formatSize(initChunkedData.size)}`
       );
 
-    const chunksize = this.getConfig().chunk_size as number;
+    const chunksize = this.exfilConfig.chunk_size as number;
     const chunks = Array.from({ length: initChunkedData.chunks }, (_, key) =>
       data.slice(key * chunksize, key * chunksize + chunksize)
     );
 
-    if (this.getConfig().upload.mode == 'Dynamic')
+    if (this.exfilConfig.upload.mode == 'Dynamic')
       reportEvent &&
         reportEvent(
           'Control',
@@ -256,7 +257,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
 
   static PROTO = window.location.protocol;
   async initChunkedDownload(id: string): Promise<InitChunkedResponse> {
-    const cfg = this.getConfig();
+    const cfg = this.exfilConfig;
     const host =
       cfg.download.hosts && cfg.download.hosts.length
         ? cfg.download.hosts[
@@ -398,7 +399,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
     storage: string,
     data: ArrayBuffer
   ): Promise<InitChunkedResponse> {
-    const cfg = this.getConfig();
+    const cfg = this.exfilConfig;
     const host =
       cfg.download.hosts && cfg.download.hosts.length
         ? cfg.download.hosts[
@@ -442,7 +443,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension {
     chunkNo: number,
     data: ArrayBuffer
   ): Promise<ApiUploadResponse> {
-    const cfg = this.getConfig();
+    const cfg = this.exfilConfig;
 
     try {
       const res = await axios.post(

@@ -28,10 +28,10 @@ export class ExtensionRepository {
   }
 
   public registerStorage(storage: StorageProvider): void {
-    if (this._storages.has(storage.name))
-      throw new Error(`Storage "${storage.name}" already registered!`);
-
-    this._storages.set(storage.name, storage);
+    if (this._storages.has(storage.instance_name))
+      throw new Error(`Storage "${storage.instance_name}" already registered!`);
+ 
+    this._storages.set(storage.instance_name, storage);
   }
 
   public getStorage(name: string): StorageProvider {
@@ -49,10 +49,10 @@ export class ExtensionRepository {
   }
 
   public registerExfil(exfil: ExfilProvider): void {
-    if (this._exfils.has(exfil.name))
-      throw new Error(`Exfil "${exfil.name}" already registered!`);
+    if (this._exfils.has(exfil.instance_name))
+      throw new Error(`Exfil "${exfil.instance_name}" already registered!`);
 
-    this._exfils.set(exfil.name, exfil);
+    this._exfils.set(exfil.instance_name, exfil);
   }
 
   public getExfil(name: string): ExfilProvider {

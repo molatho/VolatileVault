@@ -1,26 +1,36 @@
-import { ApiConfigResponse } from '../../../utils/Api';
-import { ConfigFn, StorageExtension } from '../Extension';
+import Api, {
+  ExtensionItem,
+  StorageTypes,
+} from '../../../utils/Api';
+import { BasicExtension, ConfigFn, StorageExtension } from '../Extension';
 
-export class FileSystem implements StorageExtension {
+export class FileSystem
+  extends BasicExtension<StorageTypes>
+  implements StorageExtension
+{
+  public static get extension_name(): string {
+    return 'filesystem';
+  }
+
+  public static create(
+    api: Api, cfg: ExtensionItem<any>
+  ): BasicExtension<StorageTypes> {
+    return new FileSystem(api, cfg);
+  }
+
   get isConfigurable(): boolean {
     return false;
   }
-  get name(): string {
-    return 'filesystem';
-  }
-  get displayName(): string {
-    return 'Built-in Filesystem';
-  }
-  get description(): string {
-    return 'File storage in the backed server. Files are removed after a configurable amount of time.';
+  
+  public get description(): string {
+    const desc = 'File storage in the backed server. Files are removed after a configurable amount of time.';
+    
+    if (this.cfg.description)
+      return desc + " " + this.cfg.description;
+    
+    return desc;    
   }
 
-  isPresent(config: ApiConfigResponse): boolean {
-    return (
-      config.storages.filesystem !== undefined &&
-      config.storages.filesystem !== null
-    );
-  }
   get configView(): ConfigFn {
     throw new Error(`${this.name} is not configurable`);
   }

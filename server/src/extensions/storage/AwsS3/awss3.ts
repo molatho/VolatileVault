@@ -1,4 +1,4 @@
-import { Config, StorageAwsS3 } from 'src/config/config';
+import { ExtensionItem, StorageAwsS3 } from 'src/config/config';
 import winston from 'winston';
 import { Logger } from '../../../logging';
 import {
@@ -16,13 +16,15 @@ import { S3Wrapper } from './wrapper';
 import cron from 'node-cron';
 
 export class AwsS3StorageProvider
-  extends BaseExtension<StorageProviderCapabilities>
+  extends BaseExtension<StorageProviderCapabilities, StorageAwsS3>
   implements StorageProvider
 {
   get clientConfig(): ExtensionInfo {
     return {
-      name: AwsS3StorageProvider.NAME,
-      displayName: 'AWS S3 Bucket',
+      name: this.cfg.name,
+      type: AwsS3StorageProvider.NAME,
+      display_name: this.cfg.display_name,
+      description: this.cfg.description,
       info: {
         max_size: this.config.max_size,
         file_expiry: this.config.file_expiry,
@@ -33,13 +35,24 @@ export class AwsS3StorageProvider
   private logger: winston.Logger;
   private client: S3Wrapper;
 
-  public constructor() {
-    super(AwsS3StorageProvider.NAME, ['None']);
-    this.logger = Logger.Instance.createChildLogger('AwsS3');
+  private constructor(cfg: ExtensionItem<StorageAwsS3>) {
+    super(cfg.name, ['None'], cfg);
+    this.logger = Logger.Instance.createChildLogger(
+      `${AwsS3StorageProvider.NAME}:${cfg.name}`
+    );
   }
 
-  async init(cfg: Config): Promise<void> {
-    this.cfg = cfg;
+  public static get extension_name(): string {
+    return AwsS3StorageProvider.NAME;
+  }
+
+  public static create(
+    cfg: ExtensionItem<any>
+  ): BaseExtension<StorageProviderCapabilities, StorageAwsS3> {
+    return new AwsS3StorageProvider(cfg);
+  }
+
+  async init(): Promise<void> {
     if (this.config) {
       this.logger.debug('Initializing S3 client...');
       this.client = new S3Wrapper(
@@ -70,10 +83,6 @@ export class AwsS3StorageProvider
 
   protected register() {
     ExtensionRepository.getInstance().registerStorage(this);
-  }
-
-  get config(): StorageAwsS3 {
-    return this.cfg.storage.awss3;
   }
 
   has(id: string): Promise<boolean> {

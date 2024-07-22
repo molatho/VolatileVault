@@ -5,8 +5,8 @@ import path from 'path';
 import ShortUniqueId from 'short-unique-id';
 import winston from 'winston';
 import {
-  Config,
   ExfilAwsCloudFront,
+  ExtensionItem,
   TransferConfig,
 } from '../../../config/config';
 import { FsUtils } from '../../../fs';
@@ -57,7 +57,7 @@ const TRANSFER_IDS = new ShortUniqueId({
 });
 
 export class AwsCloudFrontExfilProvider
-  extends BaseExtension<ExfilProviderCapabilities>
+  extends BaseExtension<ExfilProviderCapabilities, ExfilAwsCloudFront>
   implements ExfilProvider
 {
   private static NAME: string = 'awscloudfront';
@@ -77,27 +77,34 @@ export class AwsCloudFrontExfilProvider
     return this.config.chunk_size ?? 10 * 1024 * 1024; // Default to 10MB
   }
 
-  public constructor() {
-    super(AwsCloudFrontExfilProvider.NAME, [
-      'DownloadChunked',
-      'UploadChunked',
-    ]);
-    this.logger = Logger.Instance.createChildLogger('AwsCloudFront');
+  private constructor(cfg: ExtensionItem<ExfilAwsCloudFront>) {
+    super(cfg.name, ['DownloadChunked', 'UploadChunked'], cfg);
+    this.logger = Logger.Instance.createChildLogger(
+      `${AwsCloudFrontExfilProvider.NAME}:${cfg.name}`
+    );
     this.uploads = [];
     this.downloads = [];
-    this.fs = new FsUtils(AwsCloudFrontExfilProvider.NAME);
+    this.fs = new FsUtils(`${AwsCloudFrontExfilProvider.NAME}:${cfg.name}`);
     this.staticDownloadIdx = 0;
     this.staticUploadIdx = 0;
   }
 
-  get config(): ExfilAwsCloudFront {
-    return this.cfg.exfil.awscloudfront;
+  public static get extension_name(): string {
+    return AwsCloudFrontExfilProvider.NAME;
+  }
+
+  public static create(
+    cfg: ExtensionItem<any>
+  ): BaseExtension<ExfilProviderCapabilities, ExfilAwsCloudFront> {
+    return new AwsCloudFrontExfilProvider(cfg);
   }
 
   get clientConfig(): ExtensionInfo {
     return {
-      name: AwsCloudFrontExfilProvider.NAME,
-      displayName: 'AWS CloudFront',
+      name: this.cfg.name,
+      type: AwsCloudFrontExfilProvider.NAME,
+      display_name: this.cfg.display_name,
+      description: this.cfg.description,
       info: {
         max_total_size: this.config.max_total_size,
         chunk_size: this.config.chunk_size,
@@ -180,8 +187,7 @@ export class AwsCloudFrontExfilProvider
     return true;
   }
 
-  async init(cfg: Config): Promise<void> {
-    this.cfg = cfg;
+  async init(): Promise<void> {
     if (this.config) {
       await this.fs.init(this.config.folder);
 
@@ -241,7 +247,7 @@ export class AwsCloudFrontExfilProvider
     // Kick-off a chunked upload: allocate domains
     const initChunkUpload = express.Router();
     initChunkUpload.post(
-      `/api/${AwsCloudFrontExfilProvider.NAME}/initupload/:storage/:size`,
+      `/api/${this.instance_name}/initupload/:storage/:size`,
       async (req: Request, res: Response) => {
         this.logger.info(
           `InitChunkUpload request to ${req.params?.storage ?? 'n/a'} for ${
@@ -285,7 +291,7 @@ export class AwsCloudFrontExfilProvider
     // Get deployment status of domains used for specific transfer
     const transferStatus = express.Router();
     transferStatus.get(
-      `/api/${AwsCloudFrontExfilProvider.NAME}/status/:transferId`,
+      `/api/${this.instance_name}/status/:transferId`,
       async (req: Request, res: Response) => {
         this.logger.info(
           `Transfer status request for ${
@@ -336,7 +342,7 @@ export class AwsCloudFrontExfilProvider
     });
 
     chunkedUpload.post(
-      `/api/${AwsCloudFrontExfilProvider.NAME}/upload/:transferId/chunk/:chunkNo`,
+      `/api/${this.instance_name}/upload/:transferId/chunk/:chunkNo`,
       async (req: Request, res: Response) => {
         try {
           this.logger.info(
@@ -376,7 +382,7 @@ export class AwsCloudFrontExfilProvider
     // Kick-off a chunked download
     const initChunkDownload = express.Router();
     initChunkDownload.post(
-      `/api/${AwsCloudFrontExfilProvider.NAME}/initdownload/:id`,
+      `/api/${this.instance_name}/initdownload/:id`,
       async (req: Request, res: Response) => {
         this.logger.info(
           `InitChunkDownload request for ${req.params?.id ?? 'n/a'} from ${
@@ -412,7 +418,7 @@ export class AwsCloudFrontExfilProvider
     // Download a single chunk
     const chunkedDownload = express.Router();
     chunkedDownload.get(
-      `/api/${AwsCloudFrontExfilProvider.NAME}/download/:transferId/chunk/:chunkNo`,
+      `/api/${this.instance_name}/download/:transferId/chunk/:chunkNo`,
       async (req: Request, res: Response) => {
         this.logger.info(
           `Download request for ${req.params?.transferId ?? 'n/a'} chunk # ${
@@ -453,7 +459,7 @@ export class AwsCloudFrontExfilProvider
 
     const terminateDownload = express.Router();
     terminateDownload.post(
-      `/api/${AwsCloudFrontExfilProvider.NAME}/download/terminate/:transferId`,
+      `/api/${this.instance_name}/download/terminate/:transferId`,
       async (req: Request, res: Response) => {
         this.logger.info(
           `Termination of ${req.params?.transferId ?? 'n/a'} requested from ${
@@ -611,7 +617,7 @@ export class AwsCloudFrontExfilProvider
     const multistream = new MultiStream(files.map((f) => f[0]));
 
     this.logger.debug(
-      `Storing combined data of ${transferId} to ${storage.name}...`
+      `Storing combined data of ${transferId} to ${storage.instance_name}...`
     );
     const storageInfo = await storage.store({
       size: files.reduce((sum, file) => sum + file[1], 0),
@@ -654,7 +660,7 @@ export class AwsCloudFrontExfilProvider
         return { chunkId: key, fileId: null, done: false };
       }),
       id: transferId,
-      storage: storage.name,
+      storage: storage.instance_name,
       hosts: domains,
       creation: new Date(Date.now()),
       fs: new FsUtils(`${AwsCloudFrontExfilProvider.NAME}:${transferId}`),

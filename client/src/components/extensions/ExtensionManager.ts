@@ -1,6 +1,14 @@
-import Api, { ApiConfigResponse } from '../../utils/Api';
+import Api, {
+  ExfilTypes,
+  ExtensionItem,
+  ExtensionTypes,
+  StorageTypes,
+} from '../../utils/Api';
 import Config from '../../utils/Config';
-import { ExfilExtension, StorageExtension } from './Extension';
+import {
+  BaseExfilExtension,
+  BasicExtension,
+} from './Extension';
 import { DummyExfil } from './exfil/DummyExfil';
 import { BasicHttpExfil } from './exfil/BasicHttpExfil';
 import { DummyStorage } from './storage/DummyStorage';
@@ -8,24 +16,22 @@ import { FileSystem } from './storage/FileSystem';
 import { AwsCloudFrontExfil } from './exfil/AwsCloudFrontExfil';
 import { AwsS3 } from './storage/AwsS3';
 
-export function initializeExfilExtensions(
-  api: Api,
-  config: ApiConfigResponse
-): ExfilExtension[] {
-  if (Config.DEBUG)
-    return [
-      new BasicHttpExfil(api, config),
-      new AwsCloudFrontExfil(api, config),
-      new DummyExfil(api, config),
-    ];
-  else
-    return [
-      new BasicHttpExfil(api, config),
-      new AwsCloudFrontExfil(api, config),
-    ];
+export interface BaseExfilExtensionConstructor<T extends ExtensionTypes> {
+  extension_name: string;
+  create(api: Api, cfg: ExtensionItem<any>): BaseExfilExtension<ExfilTypes>;
 }
 
-export function getStorages(): StorageExtension[] {
-  if (Config.DEBUG) return [new FileSystem(), new AwsS3(), new DummyStorage()];
-  else return [new FileSystem(), new AwsS3()];
+export function getExfils(): BaseExfilExtensionConstructor<ExfilTypes>[] {
+  if (Config.DEBUG) return [BasicHttpExfil, AwsCloudFrontExfil, DummyExfil];
+  else return [BasicHttpExfil, AwsCloudFrontExfil];
+}
+
+export interface BasicExtensionConstructor<T extends StorageTypes> {
+  extension_name: string;
+  create(api: Api, cfg: ExtensionItem<any>): BasicExtension<StorageTypes>;
+}
+
+export function getStorages(): BasicExtensionConstructor<StorageTypes>[] {
+  if (Config.DEBUG) return [FileSystem, AwsS3, DummyStorage];
+  else return [FileSystem, AwsS3];
 }

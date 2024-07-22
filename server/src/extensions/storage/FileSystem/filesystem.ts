@@ -3,11 +3,12 @@ import {
   StorageProvider,
   StorageProviderCapabilities,
 } from '../provider';
-import { BaseExtension, ExtensionInfo, FileUploadInformation } from '../../extension';
 import {
-  StorageFileSystem,
-  Config,
-} from '../../../config/config';
+  BaseExtension,
+  ExtensionInfo,
+  FileUploadInformation,
+} from '../../extension';
+import { StorageFileSystem, ExtensionItem } from '../../../config/config';
 import { FsUtils } from '../../../fs';
 import { ExtensionRepository } from '../../repository';
 import cron from 'node-cron';
@@ -15,13 +16,15 @@ import winston from 'winston';
 import { Logger } from '../../../logging';
 
 export class FileSystemStorageProvider
-  extends BaseExtension<StorageProviderCapabilities>
+  extends BaseExtension<StorageProviderCapabilities, StorageFileSystem>
   implements StorageProvider
 {
   get clientConfig(): ExtensionInfo {
     return {
-      name: FileSystemStorageProvider.NAME,
-      displayName: 'Server Filesystem',
+      name: this.cfg.name,
+      type: FileSystemStorageProvider.NAME,
+      display_name: this.cfg.display_name,
+      description: this.cfg.description,
       info: {
         max_size: this.config.max_size,
         file_expiry: this.config.file_expiry,
@@ -32,13 +35,22 @@ export class FileSystemStorageProvider
   private logger: winston.Logger;
   private fs: FsUtils;
 
-  public constructor() {
-    super(FileSystemStorageProvider.NAME, ['None']);
-    this.logger = Logger.Instance.createChildLogger('FileSystem');
-    this.fs = new FsUtils(FileSystemStorageProvider.NAME);
+  private constructor(cfg: ExtensionItem<StorageFileSystem>) {
+    super(cfg.name, ['None'], cfg);
+    this.logger = Logger.Instance.createChildLogger(
+      `${FileSystemStorageProvider.NAME}:${cfg.name}`
+    );
+    this.fs = new FsUtils(`${FileSystemStorageProvider.NAME}:${cfg.name}`);
   }
-  get config(): StorageFileSystem {
-    return this.cfg.storage.filesystem;
+
+  public static get extension_name(): string {
+    return FileSystemStorageProvider.NAME;
+  }
+
+  public static create(
+    cfg: ExtensionItem<any>
+  ): BaseExtension<StorageProviderCapabilities, StorageFileSystem> {
+    return new FileSystemStorageProvider(cfg);
   }
 
   async has(id: string): Promise<boolean> {
@@ -49,9 +61,7 @@ export class FileSystemStorageProvider
     ExtensionRepository.getInstance().registerStorage(this);
   }
 
-  async init(cfg: Config): Promise<void> {
-    this.cfg = cfg;
-
+  async init(): Promise<void> {
     if (this.config) {
       await this.fs.init(this.config.folder);
       this.logger.info('Initialized');

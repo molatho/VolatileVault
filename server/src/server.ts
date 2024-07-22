@@ -14,10 +14,10 @@ import { AwsCloudFrontExfilProvider } from './extensions/exfil/AwsCloudFront/aws
 import { AwsS3StorageProvider } from './extensions/storage/AwsS3/awss3';
 
 const EXTENSIONS = [
-  new BasicHTTPExfilProvider(),
-  new FileSystemStorageProvider(),
-  new AwsCloudFrontExfilProvider(),
-  new AwsS3StorageProvider()
+  BasicHTTPExfilProvider,
+  FileSystemStorageProvider,
+  AwsCloudFrontExfilProvider,
+  AwsS3StorageProvider,
 ];
 
 const logger = Logger.Instance.defaultLogger;
@@ -28,29 +28,38 @@ const main = async (): Promise<void> => {
   logger.info('Initializing config...');
   await ConfigInstance.init();
 
-  for (const extension of EXTENSIONS) {
-    logger.info(`Initializing extension ${extension.name}...`);
-    await extension.init(ConfigInstance.Inst);
+  for (var i = 0; i < ConfigInstance.Inst.storage.length; i++) {
+    const storage = ConfigInstance.Inst.storage[i];
+    const prov = EXTENSIONS.find((e) => e.extension_name == storage.type);
+    if (!prov)
+      throw new Error(`Invalid StorageProvider type "${storage.type}"`);
+
+    logger.info(
+      `Initializing extension "${storage.name}" (${prov.extension_name})...`
+    );
+    const inst = prov.create(storage);
+    await inst.init();
+    if (inst.state == 'InitializationError')
+      throw new Error(
+        `Initialization of extension "${storage.name}" (${prov.extension_name}) failed!`
+      );
   }
 
-  const failed = EXTENSIONS.filter((e) => e.state == 'InitializationError');
-  if (failed.length > 0) {
-    throw new Error(
-      `The following extension(s) failed to initialize: ${failed
-        .map((f) => f.name)
-        .join(', ')}`
+  for (var i = 0; i < ConfigInstance.Inst.exfil.length; i++) {
+    const exfil = ConfigInstance.Inst.exfil[i];
+    const prov = EXTENSIONS.find((e) => e.extension_name == exfil.type);
+    if (!prov) throw new Error(`Invalid StorageProvider type "${exfil.type}"`);
+
+    logger.info(
+      `Initializing extension "${exfil.name}" (${prov.extension_name})...`
     );
+    const inst = prov.create(exfil);
+    await inst.init();
+    if (inst.state == 'InitializationError')
+      throw new Error(
+        `Initialization of extension "${exfil.name}" (${prov.extension_name}) failed!`
+      );
   }
-
-  if (ExtensionRepository.getInstance().exfils.length == 0)
-    throw new Error(
-      'No exfil provider was initialized: verify that at least one is configured.'
-    );
-
-  if (ExtensionRepository.getInstance().storages.length == 0)
-    throw new Error(
-      'No storage provider was initialized: verify that at least one is configured.'
-    );
 
   const app = express();
 
@@ -89,7 +98,7 @@ const main = async (): Promise<void> => {
 
   app.use(getRoutes());
   for (const extension of ExtensionRepository.getInstance().exfils) {
-    logger.info(`Installing routes for ${extension.name}...`);
+    logger.info(`Installing routes for ${extension.instance_name}...`);
     await extension.installRoutes(app);
   }
 
@@ -112,6 +121,6 @@ const main = async (): Promise<void> => {
   });
 };
 
-main().catch((error) => {
+main();/*.catch((error) => {
   logger.error(error.message);
-});
+});*/

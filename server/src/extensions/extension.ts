@@ -1,4 +1,11 @@
-import { Config } from '../config/config';
+import {
+  ExfilTypes,
+  ExtensionItem,
+  ExtensionTypes,
+  StorageTypes,
+} from '../config/config';
+import { ExfilProviderCapabilities } from './exfil/provider';
+import { StorageProviderCapabilities } from './storage/provider';
 
 export type ExtensionState =
   | 'Uninitialized'
@@ -8,7 +15,9 @@ export type ExtensionState =
 
 export interface ExtensionInfo {
   name: string;
-  displayName: string;
+  type: string;
+  display_name: string;
+  description?: string;
   info: object;
 }
 
@@ -19,14 +28,14 @@ export interface FileUploadInformation {
 }
 
 export interface Extension<CAP extends string> {
-  get name(): string;
+  get instance_name(): string;
   get capabilities(): CAP[];
   get clientConfig(): ExtensionInfo;
   get state(): ExtensionState;
 
   supports(capability: CAP): boolean;
 
-  init(cfg: Config): Promise<void>; 
+  init(): Promise<void>;
 
   /**
    * Allows extensions to install their own cron jobs
@@ -36,10 +45,12 @@ export interface Extension<CAP extends string> {
   installCron(): Promise<void>;
 }
 
-export abstract class BaseExtension<CAP extends string>
-  implements Extension<CAP>
+export abstract class BaseExtension<
+  CAP extends string,
+  EXC extends ExtensionTypes
+> implements Extension<CAP>
 {
-  public get name(): string {
+  public get instance_name(): string {
     return this._name;
   }
   public get capabilities(): CAP[] {
@@ -52,14 +63,36 @@ export abstract class BaseExtension<CAP extends string>
     this._state = val;
   }
 
+  public get config(): EXC {
+    return this.cfg.config;
+  }
+
   private _name: string;
   private _state: ExtensionState = 'Uninitialized';
   private _capabilities: CAP[];
-  protected cfg: Config;
+  protected cfg: ExtensionItem<EXC>;
 
-  protected constructor(name: string, capabilities: CAP[]) {
+  protected constructor(
+    name: string,
+    capabilities: CAP[],
+    cfg: ExtensionItem<EXC>
+  ) {
     this._name = name;
     this._capabilities = capabilities;
+    this.cfg = cfg;
+  }
+
+  public static get extension_name(): string {
+    throw new Error('Pure virtual call!');
+  }
+
+  public static create(
+    item: ExtensionItem<any>
+  ): BaseExtension<
+    ExfilProviderCapabilities | StorageProviderCapabilities,
+    ExfilTypes | StorageTypes
+  > {
+    throw new Error('Pure virtual call!');
   }
 
   abstract get clientConfig(): ExtensionInfo;
@@ -68,7 +101,7 @@ export abstract class BaseExtension<CAP extends string>
     return Promise.resolve();
   }
 
-  abstract init(cfg: Config): Promise<void>;
+  abstract init(): Promise<void>;
 
   supports(capability: CAP): boolean {
     return this._capabilities.indexOf(capability) !== -1;

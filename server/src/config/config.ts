@@ -1,18 +1,26 @@
+export type StorageTypes = StorageFileSystem | StorageAwsS3;
+export type ExfilTypes = ExfilBasicHTTP | ExfilAwsCloudFront;
+export type ExtensionTypes = StorageTypes | ExfilTypes;
+
 export interface Config {
   general: General;
-  storage: Storage;
-  exfil: Exfil;
+  storage: ExtensionItem<StorageTypes>[];
+  exfil: ExtensionItem<ExfilTypes>[];
 }
 
 export interface General {
+  ip: string;
   port: number;
   totp_secret: string;
   jwt_expiry: number;
 }
 
-export interface Storage {
-  filesystem?: StorageFileSystem;
-  awss3?: StorageAwsS3;
+export interface ExtensionItem<T> {
+  type: string;
+  name: string;
+  display_name: string;
+  description?: string;
+  config: T;
 }
 
 export interface BaseStorage {
@@ -22,11 +30,6 @@ export interface BaseStorage {
 
 export interface StorageFileSystem extends BaseStorage {
   folder: string;
-}
-
-export interface Exfil {
-  basichttp?: ExfilBasicHTTP;
-  awscloudfront?: ExfilAwsCloudFront;
 }
 
 export interface BaseExfil {

@@ -1,5 +1,6 @@
 import { Button, Stack } from '@mui/material';
-import { ExfilExtension } from './extensions/Extension';
+import { BaseExfilExtension } from './extensions/Extension';
+import { ExfilTypes } from '../utils/Api';
 
 export type SelectedMode =
   | 'None'
@@ -9,8 +10,8 @@ export type SelectedMode =
   | 'DownloadChunked';
 
 interface SelectorProps {
-  exfils: ExfilExtension[];
-  onSelected: (type: SelectedMode, exfils: ExfilExtension[]) => void;
+  exfils: BaseExfilExtension<ExfilTypes>[];
+  onSelected: (type: SelectedMode, exfils: BaseExfilExtension<ExfilTypes>[]) => void;
 }
 
 export default function ModeSelector({ exfils, onSelected }: SelectorProps) {

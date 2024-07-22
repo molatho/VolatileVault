@@ -7,16 +7,16 @@ export const getConfigRoute = () => {
   configRoute.get('/api/config', async (req: Request, res: Response) => {
     var storages = {}
     for (const storage of ExtensionRepository.getInstance().storages) {
-      storages[storage.name] = storage.clientConfig;
+      storages[storage.instance_name] = storage.clientConfig;
     }
     var exfils = {}
     for (const exfil of ExtensionRepository.getInstance().exfils) {
-      exfils[exfil.name] = exfil.clientConfig;
+      exfils[exfil.instance_name] = exfil.clientConfig;
     }
     return res.status(201).json({
       message: 'Request successful',
-      storages: storages,
-      exfils: exfils
+      storages: ExtensionRepository.getInstance().storages.map(s=>s.clientConfig),
+      exfils: ExtensionRepository.getInstance().exfils.map(e=>e.clientConfig)
     });
   });
   return configRoute;

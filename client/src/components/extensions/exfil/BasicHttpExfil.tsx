@@ -4,6 +4,7 @@ import Api, {
   ApiDownloadResponse,
   ApiUploadResponse,
   ApiResponse,
+  ExtensionItem,
 } from '../../../utils/Api';
 import {
   BaseExfilExtension,
@@ -17,13 +18,24 @@ import {
 import GenericHttpDownload from '../../ui/GenericHttpDownload';
 import GenericHttpUpload from '../../ui/GenericHttpUpload';
 
-export class BasicHttpExfil extends BaseExfilExtension {
+export class BasicHttpExfil extends BaseExfilExtension<ApiConfigBasicHTTPExfil> {
+  public static get extension_name(): string {
+    return 'basichttp';
+  }
+
+  public static create(
+    api: Api,
+    cfg: ExtensionItem<any>
+  ): BaseExfilExtension<ApiConfigBasicHTTPExfil> {
+    return new BasicHttpExfil(api, cfg);
+  }
+
   get downloadSingleView(): ExfilDownloadFn {
-    return () => <GenericHttpDownload exfil={this} mode='DownloadSingle'/>
+    return () => <GenericHttpDownload exfil={this} mode="DownloadSingle" />;
   }
   get uploadSingleView(): ExfilUploadFn {
     return ({ storage }: ExfilDownloadViewProps) => (
-      <GenericHttpUpload exfil={this} storage={storage} mode='UploadSingle'/>
+      <GenericHttpUpload exfil={this} storage={storage} mode="UploadSingle" />
     );
   }
   get configView(): ConfigFn {
@@ -36,35 +48,21 @@ export class BasicHttpExfil extends BaseExfilExtension {
     throw new Error('Method not supported.');
   }
 
-  get name(): string {
-    return 'basichttp';
-  }
-  get displayName(): string {
-    return 'Built-In HTTP';
-  }
   get description(): string {
-    return 'Uses regular HTTP(S) for file uploads and downloads. Files are zipped & encrypted before upload and decrypted & unzipped after download. Uploads and downloads use a REST interface and data is transferred in large, continuous blobs. Transfer looks like regular HTTP uploads/downloads.';
+    const desc =
+      'Uses regular HTTP(S) for file uploads and downloads. Files are zipped & encrypted before upload and decrypted & unzipped after download. Uploads and downloads use a REST interface and data is transferred in large, continuous blobs. Transfer looks like regular HTTP uploads/downloads.';
+    if (this.cfg.description) return desc + ' ' + this.cfg.description;
+    return desc;
   }
   get capabilities(): ExfilProviderCapabilities[] {
     return ['UploadSingle', 'DownloadSingle'];
-  }
-  override isPresent(): boolean {
-    return (
-      this.config.exfils.basichttp !== undefined &&
-      this.config.exfils.basichttp !== null
-    );
-  }
-  getConfig(): ApiConfigBasicHTTPExfil {
-    if (!this.config.exfils.basichttp)
-      throw new Error('Attempted to access missing basichttp config!');
-    return this.config.exfils.basichttp.info as ApiConfigBasicHTTPExfil;
   }
 
   async downloadSingle(
     id: string,
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiDownloadResponse> {
-    const cfg = this.getConfig();
+    const cfg = this.cfg.info! as ApiConfigBasicHTTPExfil;
     const host =
       cfg.hosts && cfg.hosts.length
         ? cfg.hosts[Math.floor(Math.random() * cfg.hosts.length)]
@@ -101,7 +99,7 @@ export class BasicHttpExfil extends BaseExfilExtension {
     data: ArrayBuffer,
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiUploadResponse> {
-    const cfg = this.getConfig();
+    const cfg = this.cfg.info! as ApiConfigBasicHTTPExfil;
     const host =
       cfg.hosts && cfg.hosts.length
         ? cfg.hosts[Math.floor(Math.random() * cfg.hosts.length)]
@@ -110,7 +108,7 @@ export class BasicHttpExfil extends BaseExfilExtension {
     try {
       const res = await axios.post(
         `${host}/api/${this.name}/upload/${storage}`,
-        data, 
+        data,
         {
           headers: {
             'Content-Type': 'application/octet-stream',
@@ -122,7 +120,7 @@ export class BasicHttpExfil extends BaseExfilExtension {
         }
       );
 
-      if (!res.data?.id) 
+      if (!res.data?.id)
         return Promise.reject(
           Api.fail_from_error(undefined, 'Failed to upload file ID')
         );

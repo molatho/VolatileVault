@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 import { Extension, FileUploadInformation } from '../extension';
-import {  BaseStorage } from '../../config/config';
+import {  BaseStorage, StorageTypes } from '../../config/config';
 
 
 /**

@@ -1,9 +1,8 @@
-import {
-  ApiConfigBaseExfil,
-  ApiConfigResponse,
+import Api, {
   ApiDownloadResponse,
   ApiUploadResponse,
-  ApiResponse,
+  ExfilTypes,
+  ExtensionItem,
 } from '../../../utils/Api';
 import {
   BaseExfilExtension,
@@ -14,10 +13,20 @@ import {
   ExfilProviderCapabilities,
   ExfilUploadFn,
   ReportEvent,
-  StorageExtension,
 } from '../Extension';
 
-export class DummyExfil extends BaseExfilExtension {
+export class DummyExfil extends BaseExfilExtension<ExfilTypes> {
+  public static get extension_name(): string {
+    return 'dummyexfil';
+  }
+
+  public static create(
+    api: Api,
+    cfg: ExtensionItem<any>
+  ): BaseExfilExtension<ExfilTypes> {
+    return new DummyExfil(api, cfg);
+  }
+
   get downloadSingleView(): ExfilDownloadFn {
     return () => <>Dummy single download</>;
   }
@@ -42,15 +51,6 @@ export class DummyExfil extends BaseExfilExtension {
       'RemoveHost',
       'AddHost',
     ];
-  }
-  isPresent(): boolean {
-    return true;
-  }
-  getConfig(): ApiConfigBaseExfil {
-    return {
-      max_total_size: 1024 * 1024 * 1024,
-      chunk_size: 1024 * 1024 * 1024,
-    };
   }
 
   downloadSingle(
@@ -85,13 +85,12 @@ export class DummyExfil extends BaseExfilExtension {
   removeHost(host: string, reportEvent: ReportEvent): Promise<void> {
     throw new Error('Method not implemented.');
   }
-  get name(): string {
-    return 'dummyexfil';
-  }
-  get displayName(): string {
-    return 'Dummy Exfiltration Transport';
-  }
+
   get description(): string {
-    return "Non-functional dummy exfiltration transport. This won't do anything and is only used for testing the frontend. It offers all capabilities Volatile Vault provides to exfiltration extensions.";
+    const desc =
+      "Non-functional dummy exfiltration transport. This won't do anything and is only used for testing the frontend. It offers all capabilities Volatile Vault provides to exfiltration extensions.";
+
+    if (this.cfg.description) return desc + ' ' + this.cfg.description;
+    return desc;
   }
 }

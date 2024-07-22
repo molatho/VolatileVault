@@ -2,8 +2,12 @@ import bodyParser from 'body-parser';
 import express, { Express, Request, Response } from 'express';
 import { Readable } from 'node:stream';
 import winston from 'winston';
-import { Config, ExfilBasicHTTP } from '../../../config/config';
-import { BaseExtension, ExtensionInfo, FileUploadInformation } from '../../extension';
+import { ExfilBasicHTTP, ExtensionItem } from '../../../config/config';
+import {
+  BaseExtension,
+  ExtensionInfo,
+  FileUploadInformation,
+} from '../../extension';
 import { ExtensionRepository } from '../../repository';
 import { Logger } from '../../../logging';
 import {
@@ -14,31 +18,40 @@ import {
 } from '../provider';
 
 export class BasicHTTPExfilProvider
-  extends BaseExtension<ExfilProviderCapabilities>
+  extends BaseExtension<ExfilProviderCapabilities, ExfilBasicHTTP>
   implements ExfilProvider
 {
   private static NAME: string = 'basichttp';
   private logger: winston.Logger;
 
-  public constructor() {
-    super(BasicHTTPExfilProvider.NAME, ['DownloadSingle', 'UploadSingle']);
-    this.logger = Logger.Instance.createChildLogger('BasicHTTP');
+  private constructor(cfg: ExtensionItem<ExfilBasicHTTP>) {
+    super(cfg.name, ['DownloadSingle', 'UploadSingle'], cfg);
+    this.logger = Logger.Instance.createChildLogger(
+      `${BasicHTTPExfilProvider.NAME}:${cfg.name}`
+    );
   }
 
-  get config(): ExfilBasicHTTP {
-    return this.cfg.exfil.basichttp;
+  public static get extension_name(): string {
+    return BasicHTTPExfilProvider.NAME;
+  }
+
+  public static create(
+    cfg: ExtensionItem<any>
+  ): BaseExtension<ExfilProviderCapabilities, ExfilBasicHTTP> {
+    return new BasicHTTPExfilProvider(cfg);
   }
 
   get clientConfig(): ExtensionInfo {
     return {
-      name: BasicHTTPExfilProvider.NAME,
-      displayName: 'Built-in HTTP',
+      name: this.cfg.name,
+      type: BasicHTTPExfilProvider.NAME,
+      display_name: this.cfg.display_name,
+      description: this.cfg.description,
       info: this.config,
     };
   }
 
-  async init(cfg: Config): Promise<void> {
-    this.cfg = cfg;
+  async init(): Promise<void> {
     if (this.config) {
       this.logger.info('Initialized');
       this.register();
@@ -76,7 +89,7 @@ export class BasicHTTPExfilProvider
     });
 
     uploadRoute.post(
-      `/api/${BasicHTTPExfilProvider.NAME}/upload/:storage`,
+      `/api/${this.instance_name}/upload/:storage`,
       async (req: Request, res: Response) => {
         this.logger.info(
           `Upload request to ${req.params?.storage ?? 'n/a'} from ${req.ip}`
@@ -121,7 +134,7 @@ export class BasicHTTPExfilProvider
     downloadRoute.use(bodyParser.json());
 
     downloadRoute.get(
-      `/api/${BasicHTTPExfilProvider.NAME}/download/:id`,
+      `/api/${this.instance_name}/download/:id`,
       async (req: Request, res: Response) => {
         this.logger.info(
           `Download request for ${req.params?.id ?? 'n/a'} from ${req.ip}`
@@ -168,14 +181,16 @@ export class BasicHTTPExfilProvider
     var file = await storage.store(data);
     return {
       id: file.id,
-      url: file.url
+      url: file.url,
     };
   }
 
   async downloadSingle(info: FileInformation): Promise<BinaryData> {
-    const storage = await ExtensionRepository.getInstance().getStorageForFile(info.id);
+    const storage = await ExtensionRepository.getInstance().getStorageForFile(
+      info.id
+    );
     var data = await storage.retrieve({ id: info.id });
-    
+
     return data;
   }
 
@@ -186,7 +201,11 @@ export class BasicHTTPExfilProvider
   initChunkUpload(storage: string, size: number): Promise<string> {
     throw new Error('Method not supported.');
   }
-  uploadChunk(transferId: string, chunkNo: number, data: BinaryData): Promise<FileUploadInformation> {
+  uploadChunk(
+    transferId: string,
+    chunkNo: number,
+    data: BinaryData
+  ): Promise<FileUploadInformation> {
     throw new Error('Method not supported.');
   }
   downloadChunk(transferId: string, chunkNo: number): Promise<BinaryData> {

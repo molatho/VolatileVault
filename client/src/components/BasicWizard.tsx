@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import Api, { ApiConfigResponse, ApiResponse } from '../utils/Api';
+import Api, { ApiConfigResponse, ApiResponse, StorageTypes } from '../utils/Api';
 import ModeSelector, { SelectedMode } from './ModeSelector';
-import { ExfilExtension, StorageExtension } from './extensions/Extension';
 import {
-  getStorages,
-  initializeExfilExtensions,
-} from './extensions/ExtensionManager';
+  BasicExtension,
+  ExfilExtension,
+  GenericExfilExtension,
+  StorageExtension,
+} from './extensions/Extension';
+import { getStorages, getExfils } from './extensions/ExtensionManager';
 import {
   Typography,
   Stepper,
@@ -41,14 +43,14 @@ enum Steps {
 }
 
 export default function BasicWizard({ api, onFinished }: WizardProps) {
-  const [storages, _] = useState(getStorages());
+  const [storages, setStorages] = useState<BasicExtension<StorageTypes>[]>([]);
   const [authenticated, setAuthenticated] = useState<boolean>(false);
   const [config, setConfig] = useState<ApiConfigResponse | undefined>(
     undefined
   );
   const [mode, setMode] = useState<SelectedMode>('None');
-  const [exfils, setExfils] = useState<ExfilExtension[]>([]);
-  const [selectedExfil, setSelectedExfil] = useState<ExfilExtension | null>(
+  const [exfils, setExfils] = useState<GenericExfilExtension[]>([]);
+  const [selectedExfil, setSelectedExfil] = useState<GenericExfilExtension | null>(
     null
   );
   const [exfilConfigured, setExfilConfigured] = useState(false);
@@ -57,7 +59,6 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
   const [storageConfigured, setStorageConfigured] = useState(false);
   const [step, setStep] = useState(Steps.Authentication);
   const isUploadMode = mode == 'UploadChunked' || mode == 'UploadSingle';
-
 
   useEffect(() => {
     async function getConfig() {
@@ -73,11 +74,38 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
     if (authenticated) getConfig();
   }, [authenticated]);
 
+  const initializeExfilsFromConfig = (
+    config: ApiConfigResponse
+  ): GenericExfilExtension[] => {
+    var exfils: GenericExfilExtension[] = [];
+
+    for (const cexfil of config.exfils) {
+      const ext = getExfils().find((e) => e.extension_name == cexfil.type);
+      if (!ext) throw new Error(`Unknown exfil type ${cexfil.type}`);
+      exfils.push(ext.create(api, cexfil));
+    }
+
+    return exfils;
+  };
+
+  const initializeStoragesFromConfig = (
+    config: ApiConfigResponse
+  ): BasicExtension<StorageTypes>[] => {
+    var storages: BasicExtension<StorageTypes>[] = [];
+
+    for (const cexfil of config.storages) {
+      const ext = getStorages().find((e) => e.extension_name == cexfil.type);
+      if (!ext) throw new Error(`Unknown storage type ${cexfil.type}`);
+      storages.push(ext.create(api, cexfil));
+    }
+
+    return storages;
+  };
+
   useEffect(() => {
     if (!config) return;
-    setExfils(
-      initializeExfilExtensions(api, config).filter((e) => e.isPresent())
-    );
+    setExfils(initializeExfilsFromConfig(config));
+    setStorages(initializeStoragesFromConfig(config));
   }, [config]);
 
   function onAuthenticated(): void {
@@ -85,7 +113,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
     setStep(Steps.SelectAction);
   }
 
-  function onModeSelected(type: SelectedMode, exfils: ExfilExtension[]): void {
+  function onModeSelected(type: SelectedMode, exfils: GenericExfilExtension[]): void {
     setMode(type);
     setExfils(exfils);
     setStep(Steps.SelectExfil);
@@ -110,8 +138,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
     setSelectedStorage(storage);
     if (!storage.isConfigurable)
       setStep(Steps.ConfigureStorage + 1); // Skip configuration step
-    else
-      setStep(Steps.ConfigureStorage);
+    else setStep(Steps.ConfigureStorage);
   }
 
   function modeToString(mode: SelectedMode): string {
@@ -133,11 +160,6 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
   function onStartOver(): void {
     setSelectedStorage(null);
     setSelectedExfil(null);
-    setExfils(
-      initializeExfilExtensions(api, config as ApiConfigResponse).filter((e) =>
-        e.isPresent()
-      )
-    );
     setMode('None');
     setStep(0);
     setExfilConfigured(false);
@@ -300,7 +322,10 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
         </Step>
         {/* 4 - Select storage */}
         <Step key={Steps.SelectStorage}>
-          <StepButton disabled={step <= Steps.SelectStorage || !isUploadMode} onClick={navToStorageSelect}>
+          <StepButton
+            disabled={step <= Steps.SelectStorage || !isUploadMode}
+            onClick={navToStorageSelect}
+          >
             <Typography variant="subtitle1">
               {selectedStorage == null ? (
                 isUploadMode ? (

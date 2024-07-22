@@ -3,6 +3,9 @@ import Api, {
   ApiConfigResponse,
   ApiDownloadResponse,
   ApiUploadResponse,
+  ExfilTypes,
+  ExtensionItem,
+  ExtensionTypes,
 } from '../../utils/Api';
 
 export type ExfilProviderCapabilities =
@@ -25,13 +28,47 @@ export interface BasicInfoHolder {
   name: string;
   displayName: string;
   description: string;
-  isPresent: (config: ApiConfigResponse) => boolean;
   isConfigurable: boolean;
   configView: ConfigFn;
 }
 
-export interface StorageExtension extends BasicInfoHolder {
+export abstract class BasicExtension<EXC extends ExtensionTypes>
+  implements BasicInfoHolder
+{
+  protected cfg: ExtensionItem<EXC>;
+  protected api: Api;
+
+  protected constructor(api: Api, cfg: ExtensionItem<EXC>) {
+    this.cfg = cfg;
+    this.api = api;
+  }
+
+  public get name(): string {
+    return this.cfg.name;
+  }
+  public get displayName(): string {
+    return `[${this.cfg.type}] ${this.cfg.display_name}`;
+  }
+  public get description(): string {
+    return this.cfg.description ?? '';
+  }
+
+  public abstract get isConfigurable(): boolean;
+  public abstract get configView(): ConfigFn;
+
+  public static get extension_name(): string {
+    throw new Error('Pure virtual call!');
+  }
+
+  public static create(
+    api: Api,
+    cfg: ExtensionItem<any>
+  ): BasicExtension<ExtensionTypes> {
+    throw new Error('Pure virtual call!');
+  }
 }
+
+export interface StorageExtension extends BasicInfoHolder {}
 
 export interface ExfilDownloadViewProps {
   storage: StorageExtension;
@@ -47,8 +84,6 @@ export type ConfigFn = (props: ConfigViewProps) => JSX.Element;
 
 export interface ExfilExtension extends BasicInfoHolder {
   get capabilities(): ExfilProviderCapabilities[];
-  isPresent: () => boolean;
-  getConfig: () => ApiConfigBaseExfil;
 
   get canDownloadSingle(): boolean;
   get canUploadSingle(): boolean;
@@ -56,6 +91,8 @@ export interface ExfilExtension extends BasicInfoHolder {
   get canUploadChunked(): boolean;
   get canAddHost(): boolean;
   get canRemoveHost(): boolean;
+
+  getConfig(): ApiConfigBaseExfil;
 
   // Custom views, only effective if overridden & booleans set
   downloadSingleView: ExfilDownloadFn;
@@ -86,15 +123,15 @@ export interface ExfilExtension extends BasicInfoHolder {
   removeHost: (host: string, reportEvent: ReportEvent) => Promise<void>;
 }
 
-export abstract class BaseExfilExtension implements ExfilExtension {
-  protected api: Api;
-  protected config: ApiConfigResponse;
+export type GenericExfilExtension = BaseExfilExtension<ExfilTypes>;
 
-  public constructor(api: Api, config: ApiConfigResponse) {
-    this.api = api;
-    this.config = config;
+export abstract class BaseExfilExtension<T extends ExfilTypes>
+  extends BasicExtension<T>
+  implements ExfilExtension
+{
+  getConfig(): ApiConfigBaseExfil {
+    return this.cfg.info! as ApiConfigBaseExfil;
   }
-
   abstract get downloadSingleView(): ExfilDownloadFn;
   abstract get uploadSingleView(): ExfilUploadFn;
   abstract get downloadChunkedView(): ExfilDownloadFn;
@@ -126,9 +163,6 @@ export abstract class BaseExfilExtension implements ExfilExtension {
     return this.canAddHost || this.canRemoveHost;
   }
 
-  abstract isPresent(): boolean;
-  abstract getConfig(): ApiConfigBaseExfil;
-
   abstract downloadSingle(
     id: string,
     reportEvent?: ReportEvent | undefined
@@ -150,8 +184,4 @@ export abstract class BaseExfilExtension implements ExfilExtension {
 
   abstract addHost(reportEvent: ReportEvent): Promise<string>;
   abstract removeHost(host: string, reportEvent: ReportEvent): Promise<void>;
-
-  abstract get name(): string;
-  abstract get displayName(): string;
-  abstract get description(): string;
 }

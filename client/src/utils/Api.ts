@@ -21,15 +21,23 @@ export interface ApiDownloadResponse extends ApiResponse {
   data: ArrayBuffer;
 }
 
-export interface ApiConfigResponse extends ApiResponse {
-  storages: ApiConfigStorageCollection;
-  exfils: ApiConfigExfilsCollection;
+export interface ExtensionItem<T extends object> {
+  type: string;
+  name: string;
+  display_name: string;
+  description?: string;
+  info?: object;
 }
 
-export interface ApiConfigExfilsCollection {
-  basichttp?: ApiConfigItem<ApiConfigBasicHTTPExfil>;
-  awscloudfront?: ApiConfigItem<ApiConfigAwsCloudFrontExfil>;
+export type StorageTypes = ApiConfigBaseStorage;
+export type ExfilTypes = ApiConfigBasicHTTPExfil | ApiConfigAwsCloudFrontExfil;
+export type ExtensionTypes = StorageTypes | ExfilTypes;
+
+export interface ApiConfigResponse extends ApiResponse {
+  storages: ExtensionItem<StorageTypes>[];
+  exfils: ExtensionItem<ExfilTypes>[];
 }
+
 
 export interface ApiConfigBaseExfil {
   max_total_size?: number;
@@ -52,20 +60,9 @@ export interface ApiConfigAwsCloudFrontExfil extends ApiConfigBaseExfil {
   download: AwsCloudFrontTransferConfig;
 }
 
-export interface ApiConfigStorageCollection {
-  filesystem?: ApiConfigItem<ApiConfigBaseStorage>;
-  awss3?: ApiConfigItem<ApiConfigBaseStorage>;
-}
-
 export interface ApiConfigBaseStorage {
   max_size: number;
   file_expiry: number;
-}
-
-export interface ApiConfigItem<T extends object> {
-  name: string;
-  displayName: string;
-  info?: T;
 }
 
 export default class Api {
