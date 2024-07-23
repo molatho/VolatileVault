@@ -5,11 +5,22 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using YamlDotNet.Serialization;
+
+
+
+var content = File.ReadAllText("config.yaml");
+var deserializer = new DeserializerBuilder()
+            .Build();
+
+var config = deserializer.Deserialize<Config>(content);
+
+var basichttp = config.exfil.FirstOrDefault(e => e.type == "basichttp" && e.config.server != null);
+if (basichttp == null) throw new Exception("No internal basichttp server found!");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -81,7 +92,9 @@ app.Use(async (context, next) =>
                 }
                 else
                 {
-                    _ = handleUnidirectionalStream(session, stream);
+                    // We'll only allow bidirectional streams ¯\_(ツ)_/¯
+                    stream.Abort();
+                    session.Abort(0x0101); // H3_GENERAL_PROTOCOL_ERROR: Peer violated protocol requirements in a way that does not match a more specific error code or endpoint declines to use the more specific error code.
                 }
             }
         }
@@ -90,28 +103,17 @@ app.Use(async (context, next) =>
 
 await app.RunAsync();
 
-static async Task handleUnidirectionalStream(IWebTransportSession session, ConnectionContext stream)
-{
-    var inputPipe = stream.Transport.Input;
 
-    // read some data from the stream into the memory
-    var memory = new Memory<byte>(new byte[4096]);
-    while (!stream.ConnectionClosed.IsCancellationRequested)
-    {
-        var length = await inputPipe.AsStream().ReadAsync(memory);
-
-        var message = Encoding.Default.GetString(memory[..length].ToArray());
-
-        await ApplySpecialCommands(session, message);
-
-        Console.WriteLine("RECEIVED FROM CLIENT:");
-        Console.WriteLine(message);
-
-    }
-}
 
 static async Task handleBidirectionalStream(IWebTransportSession session, ConnectionContext stream)
 {
+    // TODO: Implement protocol:
+    //      1) Receive & validate user's JWT
+    //      2) Receive & validate no. of chunks to expect from the user
+    //      3) Read as many chunks as specified
+    //      4) Upload via `server` basichttp instance
+    //      5) Respond to client with file ID
+
     var inputPipe = stream.Transport.Input;
     var outputPipe = stream.Transport.Output;
 
@@ -124,9 +126,6 @@ static async Task handleBidirectionalStream(IWebTransportSession session, Connec
         // slice to only keep the relevant parts of the memory
         var outputMemory = memory[..length];
 
-        // handle special commands
-        await ApplySpecialCommands(session, Encoding.Default.GetString(outputMemory.ToArray()));
-
         // do some operations on the contents of the data
         outputMemory.Span.Reverse();
 
@@ -137,24 +136,6 @@ static async Task handleBidirectionalStream(IWebTransportSession session, Connec
     }
 }
 
-static async Task ApplySpecialCommands(IWebTransportSession session, string message)
-{
-    switch (message)
-    {
-        case "Initiate Stream":
-            var stream = await session.OpenUnidirectionalStreamAsync();
-            if (stream is not null)
-            {
-                await stream.Transport.Output.WriteAsync(new("Created a new stream from the client and sent this message then closing the stream."u8.ToArray()));
-            }
-            break;
-        case "Abort":
-            session.Abort(256 /*No error*/);
-            break;
-        default:
-            break; // in all other cases the string is not a special command
-    }
-}
 
 // Adapted from: https://github.com/wegylexy/webtransport
 // We will need to eventually merge this with existing Kestrel certificate generation

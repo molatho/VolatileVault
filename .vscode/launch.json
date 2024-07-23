@@ -9,9 +9,9 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "quic-build",
-            "program": "${workspaceFolder}/quic/bin/Debug/net8.0/quic.exe",
+            "program": "${workspaceFolder}/extensions/quic/bin/Debug/net8.0/quic.exe",
             "args": [],
-            "cwd": "${workspaceFolder}/quic/bin/Debug/net8.0",
+            "cwd": "${workspaceFolder}/extensions/quic/bin/Debug/net8.0",
             "stopAtEntry": false,
             "serverReadyAction": {
                 "action": "openExternally",
