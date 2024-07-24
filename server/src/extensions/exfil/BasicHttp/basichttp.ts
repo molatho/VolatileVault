@@ -2,7 +2,7 @@ import bodyParser from 'body-parser';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { Readable } from 'node:stream';
 import winston from 'winston';
-import { ExfilBasicHTTP, ExtensionItem } from '../../../config/config';
+import { ExfilBasicHTTP, ExtensionItem, Config } from '../../../config/config';
 import {
   BaseExtension,
   ExtensionInfo,
@@ -54,7 +54,7 @@ export class BasicHTTPExfilProvider
     };
   }
 
-  async init(): Promise<void> {
+  async init(cfg: Config): Promise<void> {
     if (this.config) {
       this.logger.info('Initialized');
       this.register();

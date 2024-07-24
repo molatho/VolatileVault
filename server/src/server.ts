@@ -12,12 +12,14 @@ import { BasicHTTPExfilProvider } from './extensions/exfil/BasicHttp/basichttp';
 import { Logger } from './logging';
 import { AwsCloudFrontExfilProvider } from './extensions/exfil/AwsCloudFront/awscloudfront';
 import { AwsS3StorageProvider } from './extensions/storage/AwsS3/awss3';
+import { QuicExfilProvider } from './extensions/exfil/Quic/quic';
 
 const EXTENSIONS = [
   BasicHTTPExfilProvider,
   FileSystemStorageProvider,
   AwsCloudFrontExfilProvider,
-  AwsS3StorageProvider,
+  QuicExfilProvider,
+  AwsS3StorageProvider
 ];
 
 const logger = Logger.Instance.defaultLogger;
@@ -31,14 +33,14 @@ const main = async (): Promise<void> => {
   for (var i = 0; i < ConfigInstance.Inst.storage.length; i++) {
     const storage = ConfigInstance.Inst.storage[i];
     const prov = EXTENSIONS.find((e) => e.extension_name == storage.type);
-    if (!prov)
+    if (!prov) 
       throw new Error(`Invalid StorageProvider type "${storage.type}"`);
 
     logger.info(
       `Initializing extension "${storage.name}" (${prov.extension_name})...`
     );
     const inst = prov.create(storage);
-    await inst.init();
+    await inst.init(ConfigInstance.Inst);
     if (inst.state == 'InitializationError')
       throw new Error(
         `Initialization of extension "${storage.name}" (${prov.extension_name}) failed!`
@@ -48,13 +50,13 @@ const main = async (): Promise<void> => {
   for (var i = 0; i < ConfigInstance.Inst.exfil.length; i++) {
     const exfil = ConfigInstance.Inst.exfil[i];
     const prov = EXTENSIONS.find((e) => e.extension_name == exfil.type);
-    if (!prov) throw new Error(`Invalid StorageProvider type "${exfil.type}"`);
+    if (!prov) throw new Error(`Invalid ExfilProvider type "${exfil.type}"`);
 
     logger.info(
       `Initializing extension "${exfil.name}" (${prov.extension_name})...`
     );
     const inst = prov.create(exfil);
-    await inst.init();
+    await inst.init(ConfigInstance.Inst);
     if (inst.state == 'InitializationError')
       throw new Error(
         `Initialization of extension "${exfil.name}" (${prov.extension_name}) failed!`

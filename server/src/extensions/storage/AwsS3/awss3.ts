@@ -1,4 +1,4 @@
-import { ExtensionItem, StorageAwsS3 } from 'src/config/config';
+import { ExtensionItem, StorageAwsS3, Config } from 'src/config/config';
 import winston from 'winston';
 import { Logger } from '../../../logging';
 import {
@@ -52,7 +52,7 @@ export class AwsS3StorageProvider
     return new AwsS3StorageProvider(cfg);
   }
 
-  async init(): Promise<void> {
+  async init(cfg: Config): Promise<void> {
     if (this.config) {
       this.logger.debug('Initializing S3 client...');
       this.client = new S3Wrapper(

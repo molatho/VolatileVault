@@ -30,7 +30,7 @@ export interface ExtensionItem<T extends object> {
 }
 
 export type StorageTypes = ApiConfigBaseStorage;
-export type ExfilTypes = ApiConfigBasicHTTPExfil | ApiConfigAwsCloudFrontExfil;
+export type ExfilTypes = ApiConfigBasicHTTPExfil | ApiConfigAwsCloudFrontExfil | ApiConfigQuicExfil;
 export type ExtensionTypes = StorageTypes | ExfilTypes;
 
 export interface ApiConfigResponse extends ApiResponse {
@@ -42,6 +42,13 @@ export interface ApiConfigResponse extends ApiResponse {
 export interface ApiConfigBaseExfil {
   max_total_size?: number;
   chunk_size?: number;
+}
+
+export interface ApiConfigQuicExfil extends ApiConfigBaseExfil {
+  hosts: string[];
+  port: number;
+  key: string;
+  cert: string;
 }
 
 export interface ApiConfigBasicHTTPExfil extends ApiConfigBaseExfil {

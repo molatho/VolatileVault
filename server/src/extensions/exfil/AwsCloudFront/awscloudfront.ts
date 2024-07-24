@@ -8,6 +8,7 @@ import {
   ExfilAwsCloudFront,
   ExtensionItem,
   TransferConfig,
+  Config
 } from '../../../config/config';
 import { FsUtils } from '../../../fs';
 import { Logger } from '../../../logging';
@@ -187,7 +188,7 @@ export class AwsCloudFrontExfilProvider
     return true;
   }
 
-  async init(): Promise<void> {
+  async init(cfg: Config): Promise<void> {
     if (this.config) {
       await this.fs.init(this.config.folder);
 

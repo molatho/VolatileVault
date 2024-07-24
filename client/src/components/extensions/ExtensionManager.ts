@@ -15,6 +15,7 @@ import { DummyStorage } from './storage/DummyStorage';
 import { FileSystem } from './storage/FileSystem';
 import { AwsCloudFrontExfil } from './exfil/AwsCloudFrontExfil';
 import { AwsS3 } from './storage/AwsS3';
+import { QuicExfil } from './exfil/quic/QuicExfil';
 
 export interface BaseExfilExtensionConstructor<T extends ExfilTypes> {
   extension_name: string;
@@ -22,8 +23,8 @@ export interface BaseExfilExtensionConstructor<T extends ExfilTypes> {
 }
 
 export function getExfils(): BaseExfilExtensionConstructor<ExfilTypes>[] {
-  if (Config.DEBUG) return [BasicHttpExfil, AwsCloudFrontExfil, DummyExfil];
-  else return [BasicHttpExfil, AwsCloudFrontExfil];
+  if (Config.DEBUG) return [BasicHttpExfil, AwsCloudFrontExfil, DummyExfil, QuicExfil];
+  else return [BasicHttpExfil, AwsCloudFrontExfil, QuicExfil];
 }
 
 export interface BasicExtensionConstructor<T extends StorageTypes> {

@@ -52,7 +52,7 @@ static Task RunWebApp(RunOptions quicOptions)
         {
             listenOptions.UseHttps(certificate);
             listenOptions.UseConnectionLogging();
-            listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+            listenOptions.Protocols = HttpProtocols.Http3;
         });
     });
 
@@ -79,7 +79,12 @@ static Task RunWebApp(RunOptions quicOptions)
                 await next(context);
             }
 
-            var session = await feature.AcceptAsync(CancellationToken.None);
+            IWebTransportSession? session = null;
+            try{
+                session = await feature.AcceptAsync(CancellationToken.None);
+            }catch (Exception ex){
+                Console.WriteLine(ex.Message);
+            }
 
             if (session is null)
             {
@@ -249,21 +254,27 @@ static async Task<bool> IsAuthenticated(string token, RunOptions quicOptions)
 // tracked in issue #41762
 static X509Certificate2 GenerateManualCertificate()
 {
-    X509Certificate2 cert;
-    var store = new X509Store("KestrelSampleWebTransportCertificates", StoreLocation.CurrentUser);
-    store.Open(OpenFlags.ReadWrite);
-    if (store.Certificates.Count > 0)
-    {
-        cert = store.Certificates[^1];
+    const string certPath = "dev.crt";
+    const string keyPath = "dev.pem";
 
-        // rotate key after it expires
+    X509Certificate2 cert;
+
+    // Check if the certificate file exists
+    if (File.Exists(certPath) && File.Exists(keyPath))
+    {
+        string _certPem = File.ReadAllText(certPath);
+        string _keyPem = File.ReadAllText(keyPath);
+
+        cert = X509Certificate2.CreateFromPem(_certPem, _keyPem);
+
+        // Rotate key if it has expired
         if (DateTime.Parse(cert.GetExpirationDateString(), null) >= DateTimeOffset.UtcNow)
         {
-            store.Close();
             return cert;
         }
     }
-    // generate a new cert
+
+    // Generate a new certificate if it doesn't exist or has expired
     var now = DateTimeOffset.UtcNow;
     SubjectAlternativeNameBuilder sanBuilder = new();
     sanBuilder.AddDnsName("localhost");
@@ -282,10 +293,34 @@ static X509Certificate2 GenerateManualCertificate()
     using var crt = req.CreateSelfSigned(now, now.AddDays(14)); // 14 days is the max duration of a certificate for this
     cert = new(crt.Export(X509ContentType.Pfx));
 
-    // Save
-    store.Add(cert);
-    store.Close();
+    // Convert to PEM format
+    string certPem = ConvertToPem(crt);
+    string keyPem = ConvertToPem2(ec);
+
+    // Save the certificate and key to the filesystem
+    //Directory.CreateDirectory(Path.GetDirectoryName(certPath)); // Ensure the directory exists
+    File.WriteAllText(certPath, certPem);
+    File.WriteAllText(keyPath, keyPem);
+
     return cert;
+}
+
+static string ConvertToPem(X509Certificate2 cert)
+{
+    StringBuilder builder = new();
+    builder.AppendLine("-----BEGIN CERTIFICATE-----");
+    builder.AppendLine(Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks));
+    builder.AppendLine("-----END CERTIFICATE-----");
+    return builder.ToString();
+}
+
+static string ConvertToPem2(ECDsa key)
+{
+    StringBuilder builder = new();
+    builder.AppendLine("-----BEGIN PRIVATE KEY-----");
+    builder.AppendLine(Convert.ToBase64String(key.ExportPkcs8PrivateKey(), Base64FormattingOptions.InsertLineBreaks));
+    builder.AppendLine("-----END PRIVATE KEY-----");
+    return builder.ToString();
 }
 
 class QuicRequest
@@ -307,6 +342,7 @@ class QuicRequest
     [JsonPropertyName("download_id")]
     public string? DownloadId { get; set; }
 }
+
 
 class QuicResponse
 {

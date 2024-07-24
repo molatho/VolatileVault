@@ -1,5 +1,5 @@
 export type StorageTypes = StorageFileSystem | StorageAwsS3;
-export type ExfilTypes = ExfilBasicHTTP | ExfilAwsCloudFront;
+export type ExfilTypes = ExfilBasicHTTP | ExfilAwsCloudFront | ExfilQuic;
 export type ExtensionTypes = StorageTypes | ExfilTypes;
 
 export interface Config {
@@ -37,9 +37,12 @@ export interface BaseExfil {
   chunk_size?: number;
 }
 
-export interface ExfilBasicHTTPServer {
+export interface ServerInfo {
   host: string;
   port: number;
+}
+
+export interface ExfilBasicHTTPServer extends ServerInfo {
 }
 
 export interface ExfilBasicHTTP extends BaseExfil {
@@ -74,4 +77,11 @@ export interface StorageAwsS3 extends BaseStorage, BaseAwsSettings {
   bucket: string;
   generate_presigned_urls: boolean;
   user_arn: string;
+}
+
+export interface ExfilQuic extends BaseExfil {
+  bindInterface: ServerInfo;
+  hosts: string[];
+  serverBinary: string;
+  serverDirectory: string;
 }
