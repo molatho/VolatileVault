@@ -67,7 +67,7 @@ export class QuicExfil extends BaseExfilExtension<ApiConfigQuicExfil> {
         : Api.BASE_URL;
 
     try{
-      const webTransportService = new WebTransportService(`${host}/webtransport`);
+      const webTransportService = new WebTransportService(`${host}/`);
       await webTransportService.connect();
       return webTransportService;
     }catch(error){
@@ -84,12 +84,8 @@ export class QuicExfil extends BaseExfilExtension<ApiConfigQuicExfil> {
   ): Promise<ApiDownloadResponse> {
     try {
       const webTransportService = await this.initializeWebTransportService();
-      await webTransportService.sendData(JSON.stringify({ authorization: this.api.token, action: 'download', id }));
-      const data = await new Promise<string>((resolve) => {
-        webTransportService.receiveData((receivedData) => {
-          resolve(receivedData);
-        });
-      });
+      await webTransportService.sendData(JSON.stringify({ authorization: this.api.token, action: 'download', download_id: id }));
+      const data = await webTransportService.receiveData();
 
       if (!data)
         return Promise.reject(
@@ -116,25 +112,21 @@ export class QuicExfil extends BaseExfilExtension<ApiConfigQuicExfil> {
   ): Promise<ApiUploadResponse> {
     try {
       const webTransportService = await this.initializeWebTransportService();
-      await webTransportService.sendData(JSON.stringify({ authorization: this.api.token, action: 'upload'}));
+      await webTransportService.sendData(JSON.stringify({ token: this.api.token, action: 'upload', upload_length: data.byteLength, upload_storage: storage}));
       
+      const response = await webTransportService.receiveData();
+      const res_auth = JSON.parse(response);
+      if (res_auth?.success !== true)
+        return Promise.reject(Api.fail_from_error(undefined, res_auth.message ?? 'Unauthorized')
+      );
+      
+      await webTransportService.sendBinary(data);
+      const res_data = JSON.parse(response);
+      if (res_data?.success !== true || !res_data.data.id)
+        return Promise.reject(Api.fail_from_error(undefined, 'Failed to upload file ID')
+      );
 
-      const response = await new Promise<string>((resolve) => {
-        webTransportService.receiveData((receivedData) => {
-          resolve(receivedData);
-        });
-      });
-
-      const res = JSON.parse(response);
-
-      if (!res?.id)
-        return Promise.reject(
-          Api.fail_from_error(undefined, 'Failed to upload file ID')
-        );
-
-      await webTransportService.sendData(JSON.stringify({ authorization: this.api.token, action: 'upload', storage, data: data }));
-
-      return Api.success_from_data(res) as ApiUploadResponse;
+      return Api.success_from_data({id: res_data.data.id, lifeTime: res_data.data.lifeTime}) as ApiUploadResponse;
     } catch (error) {
       return Promise.reject<ApiResponse>(Api.fail_from_error(error));
     }

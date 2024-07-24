@@ -8,7 +8,7 @@ import {
   ExtensionInfo,
   FileUploadInformation,
 } from '../../extension';
-import { StorageFileSystem, ExtensionItem } from '../../../config/config';
+import { StorageFileSystem, ExtensionItem, Config } from '../../../config/config';
 import { FsUtils } from '../../../fs';
 import { ExtensionRepository } from '../../repository';
 import cron from 'node-cron';
@@ -61,7 +61,7 @@ export class FileSystemStorageProvider
     ExtensionRepository.getInstance().registerStorage(this);
   }
 
-  async init(): Promise<void> {
+  async init(cfg: Config): Promise<void> {
     if (this.config) {
       await this.fs.init(this.config.folder);
       this.logger.info('Initialized');

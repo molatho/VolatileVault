@@ -1,4 +1,5 @@
 import {
+  Config,
   ExfilTypes,
   ExtensionItem,
   ExtensionTypes,
@@ -35,7 +36,7 @@ export interface Extension<CAP extends string> {
 
   supports(capability: CAP): boolean;
 
-  init(): Promise<void>;
+  init(cfg: Config): Promise<void>;
 
   /**
    * Allows extensions to install their own cron jobs
@@ -101,7 +102,7 @@ export abstract class BaseExtension<
     return Promise.resolve();
   }
 
-  abstract init(): Promise<void>;
+  abstract init(cfg: Config): Promise<void>;
 
   supports(capability: CAP): boolean {
     return this._capabilities.indexOf(capability) !== -1;
