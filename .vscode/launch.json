@@ -30,7 +30,7 @@
             "request": "launch",
             "preLaunchTask": "quic-build",
             "program": "${workspaceFolder}/extensions/quic/bin/Debug/net8.0/quic",
-            "args": ["--host", "127.0.0.1", "--webport", "5001", "--quicport", "5002", "--vvhost", "127.0.0.1", "--vvport", "1337", "--vvext", "internal"],
+            "args": ["--host", "0.0.0.0", "--webport", "5001", "--quicport", "5002", "--vvhost", "127.0.0.1", "--vvport", "1337", "--vvext", "internal"],
             "cwd": "${workspaceFolder}/extensions/quic/bin/Debug/net8.0",
             "stopAtEntry": false,
             "serverReadyAction": {

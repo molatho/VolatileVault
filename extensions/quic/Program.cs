@@ -52,7 +52,7 @@ static Task RunWebApp(RunOptions quicOptions)
         {
             listenOptions.UseHttps(certificate);
             listenOptions.UseConnectionLogging();
-            listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+            listenOptions.Protocols = HttpProtocols.Http3;
         });
     });
 
@@ -79,7 +79,12 @@ static Task RunWebApp(RunOptions quicOptions)
                 await next(context);
             }
 
-            var session = await feature.AcceptAsync(CancellationToken.None);
+            IWebTransportSession? session = null;
+            try{
+                session = await feature.AcceptAsync(CancellationToken.None);
+            }catch (Exception ex){
+                Console.WriteLine(ex.Message);
+            }
 
             if (session is null)
             {
