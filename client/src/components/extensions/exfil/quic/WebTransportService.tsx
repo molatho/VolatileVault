@@ -2,15 +2,21 @@
 
 class WebTransportService {
   private url: string;
-  private transport: WebTransport | null;
+  private session: WebTransport | null;
+  private stream: WebTransportBidirectionalStream | null;
+  private reader: ReadableStreamDefaultReader<Uint8Array> | null;
+  private writer: WritableStreamDefaultWriter<Uint8Array> | null;
 
   constructor(url: string) {
     this.url = url;
-    this.transport = null;
+    this.session = null;
+    this.stream = null;
+    this.reader = null;
+    this.writer = null;
   }
 
   public async connect(): Promise<void> {
-    this.transport = new WebTransport(this.url, {
+    this.session = new WebTransport(this.url, {
       serverCertificateHashes: [
         {
           algorithm: 'sha-256',
@@ -22,20 +28,19 @@ class WebTransportService {
       ],
     });
 
-    try {
-      await this.transport.ready;
-      console.log('WebTransport connection established');
-    } catch (error) {
-      console.error('Failed to establish WebTransport connection:', error);
-      return;
-    }
+    await this.session.ready;
+    console.log('WebTransport connection established');
 
-    this.transport.closed
+    this.stream = await this.session.createBidirectionalStream();
+    this.reader = this.stream.readable.getReader();
+    this.writer = this.stream.writable.getWriter();
+
+    this.session.closed
       .then(() => {
         console.log('WebTransport connection closed');
       })
       .catch((error) => {
-        console.error('WebTransport connection closed with error:', error);
+        throw new Error('WebTransport connection closed with error:', error);
       });
   }
 
@@ -45,40 +50,65 @@ class WebTransportService {
   }
 
   public async sendBinary(data: ArrayBuffer): Promise<void> {
-    if (!this.transport || !this.transport.ready) {
+    if (this.writer === null) {
       throw new Error('WebTransport connection is not ready');
     }
 
-    const writable = this.transport.datagrams.writable.getWriter();
-    await writable.write(data);
-    writable.releaseLock();
+    await this.writer!.write(new Uint8Array(data));
   }
 
-  public async receiveData(): Promise<string> {
-    if (!this.transport || !this.transport.ready) {
+  public async receiveData(): Promise<Uint8Array> {
+    if (this.reader === null) {
       throw new Error('WebTransport connection is not ready');
     }
 
-    const reader = this.transport.datagrams.readable.getReader();
-
-    return new Promise<string>(async (res, rej) => {
-      var data = '';
+    return new Promise<Uint8Array>(async (res, rej) => {
       try {
-        while (true) {
-          const { value, done } = await reader.read();
+        var result: ReadableStreamReadResult<Uint8Array>;
+        do {
+          result = await this.reader!.read();
+        } while (!result.done && (!result.value || !result.value.byteLength));
 
-          const decoder = new TextDecoder();
-          data += decoder.decode(value);
-
-          if (done) {
-            res(data);
-          }
-        }
+        res(result.value ?? new Uint8Array());
       } catch (err) {
         rej(err);
       }
     });
   }
+
+  public async receiveString(): Promise<string> {
+    const data = await this.receiveData();
+    return new TextDecoder().decode(data);
+  }
+
+  public async disconnect(transport: WebTransport): Promise<void> {
+    try {
+      transport.close({
+        closeCode: 0o17,
+        reason: 'CloseButtonPressed',
+      });
+    } catch (err) {
+      if (
+        err instanceof WebTransportError &&
+        err.name === 'InvalidStateError'
+      ) {
+        throw new Error('WebTransport is already closed:', err);
+      } else {
+        throw new Error(
+          'WebTransport is in the process of connecting and cannot be closed:',
+          err
+        );
+      }
+    }
+    try {
+      await transport.closed;
+      console.log(`The HTTP/3 connection closed gracefully.`);
+    } catch (error) {
+      throw new Error(`The HTTP/3 connection closed due to ${error}.`);
+    }
+  }
+
+  public async waitForTransportClose(transport: WebTransport): Promise<void> {}
 }
 
 export default WebTransportService;

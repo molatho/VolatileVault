@@ -19,6 +19,7 @@ import {
 import nocache from 'nocache';
 import { jwt } from '../../../jwt';
 import { Request as JWTRequest, UnauthorizedError } from 'express-jwt';
+import { getAuthRoute } from '../../../routes/auth';
 
 export class BasicHTTPExfilProvider
   extends BaseExtension<ExfilProviderCapabilities, ExfilBasicHTTP>
@@ -83,6 +84,8 @@ export class BasicHTTPExfilProvider
       app.disable('x-powered-by');
       app.use(nocache());
       app.use(bodyParser.urlencoded({ extended: false }));
+
+      app.use(getAuthRoute());
 
       app.use(
         '/api',

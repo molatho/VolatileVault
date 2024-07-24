@@ -120,6 +120,7 @@ const main = async (): Promise<void> => {
     await extension.installCron();
   }
 
+  // TODO: Remove in prod
   const apiProxy = proxy('http://localhost:3000/', {
     proxyReqPathResolver: (req) => req.path,
   });

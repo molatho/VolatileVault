@@ -81,9 +81,12 @@ static Task RunWebApp(RunOptions quicOptions)
             }
 
             IWebTransportSession? session = null;
-            try{
+            try
+            {
                 session = await feature.AcceptAsync(CancellationToken.None);
-            }catch (Exception ex){
+            }
+            catch (Exception ex)
+            {
                 Console.WriteLine(ex.Message);
             }
 
@@ -100,7 +103,7 @@ static Task RunWebApp(RunOptions quicOptions)
                 stream = await session.AcceptStreamAsync(CancellationToken.None);
                 if (stream is not null)
                 {
-                Console.WriteLine($"Got WebTransport connection from {context.Connection.RemoteIpAddress}:{context.Connection.RemotePort}");
+                    Console.WriteLine($"Got WebTransport connection from {context.Connection.RemoteIpAddress}:{context.Connection.RemotePort}");
                     direction = stream.Features.GetRequiredFeature<IStreamDirectionFeature>();
                     if (direction.CanRead && direction.CanWrite)
                     {
@@ -194,6 +197,7 @@ static async Task<UploadResponse> HandleUpload(QuicRequest request, ConnectionCo
 {
     if (request.UploadLength == null || request.UploadStorage == null)
         throw new Exception("Missing upload information");
+    Console.WriteLine($"Uploading {request.UploadLength} bytes to {request.UploadStorage}...");
 
     using (var memstr = new MemoryStream(request.UploadLength.Value))
     {
@@ -213,13 +217,15 @@ static async Task<UploadResponse> HandleUpload(QuicRequest request, ConnectionCo
             using (var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"http://{quicOptions.VVHost}:{quicOptions.VVPort}/api/{quicOptions.VVExt}/upload/{request.UploadStorage}"))
             {
                 httpRequest.Headers.Add("Authorization", $"Bearer {request.Token}");
-                httpRequest.Headers.Add("Content-Type", "application/octet-stream");
                 memstr.Position = 0;
                 httpRequest.Content = new StreamContent(memstr);
+                httpRequest.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
                 using (var httpResponse = await client.SendAsync(httpRequest))
                 {
                     httpResponse.EnsureSuccessStatusCode();
-                    return (await httpResponse.Content.ReadFromJsonAsync<UploadResponse>())!;
+                    var res = await httpResponse.Content.ReadFromJsonAsync<UploadResponse>()!;
+                    Console.WriteLine($"Upload done: {res!.ID}");
+                    return res;
                 }
             }
         }
