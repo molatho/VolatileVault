@@ -16,9 +16,9 @@ import { FileSystem } from './storage/FileSystem';
 import { AwsCloudFrontExfil } from './exfil/AwsCloudFrontExfil';
 import { AwsS3 } from './storage/AwsS3';
 
-export interface BaseExfilExtensionConstructor<T extends ExtensionTypes> {
+export interface BaseExfilExtensionConstructor<T extends ExfilTypes> {
   extension_name: string;
-  create(api: Api, cfg: ExtensionItem<any>): BaseExfilExtension<ExfilTypes>;
+  create(api: Api, cfg: ExtensionItem<any>): BaseExfilExtension<T>;
 }
 
 export function getExfils(): BaseExfilExtensionConstructor<ExfilTypes>[] {
@@ -28,7 +28,7 @@ export function getExfils(): BaseExfilExtensionConstructor<ExfilTypes>[] {
 
 export interface BasicExtensionConstructor<T extends StorageTypes> {
   extension_name: string;
-  create(api: Api, cfg: ExtensionItem<any>): BasicExtension<StorageTypes>;
+  create(api: Api, cfg: ExtensionItem<any>): BasicExtension<T>;
 }
 
 export function getStorages(): BasicExtensionConstructor<StorageTypes>[] {
