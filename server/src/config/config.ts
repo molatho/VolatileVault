@@ -13,6 +13,12 @@ export interface General {
   port: number;
   totp_secret: string;
   jwt_expiry: number;
+  ssl?: SslCert;
+}
+
+export interface SslCert {
+  key_file: string;
+  cert_file: string;
 }
 
 export interface ExtensionItem<T> {

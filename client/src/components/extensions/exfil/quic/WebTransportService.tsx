@@ -10,7 +10,17 @@ class WebTransportService {
   }
 
   public async connect(): Promise<void> {
-    this.transport = new WebTransport(this.url);
+    this.transport = new WebTransport(this.url, {
+      serverCertificateHashes: [
+        {
+          algorithm: 'sha-256',
+          value: Uint8Array.from(
+            atob('tMFLlgJGlw4HAKkfqbGdMMREkV92bxQmqcblalKqyEs='), //TODO: Obtain dynamically from backend
+            (c) => c.charCodeAt(0)
+          ),
+        },
+      ],
+    });
 
     try {
       await this.transport.ready;
@@ -52,7 +62,7 @@ class WebTransportService {
     const reader = this.transport.datagrams.readable.getReader();
 
     return new Promise<string>(async (res, rej) => {
-      var data = "";
+      var data = '';
       try {
         while (true) {
           const { value, done } = await reader.read();
@@ -64,7 +74,9 @@ class WebTransportService {
             res(data);
           }
         }
-      } catch (err) { rej(err); }
+      } catch (err) {
+        rej(err);
+      }
     });
   }
 }

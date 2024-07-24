@@ -10,3 +10,5 @@ config*.yaml
 /logs/*.log*
 
 *.pem
+
+cert.*

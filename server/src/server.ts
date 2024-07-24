@@ -13,13 +13,16 @@ import { Logger } from './logging';
 import { AwsCloudFrontExfilProvider } from './extensions/exfil/AwsCloudFront/awscloudfront';
 import { AwsS3StorageProvider } from './extensions/storage/AwsS3/awss3';
 import { QuicExfilProvider } from './extensions/exfil/Quic/quic';
+import https from 'https';
+import fs from 'fs';
+import proxy from 'express-http-proxy';
 
 const EXTENSIONS = [
   BasicHTTPExfilProvider,
   FileSystemStorageProvider,
   AwsCloudFrontExfilProvider,
   QuicExfilProvider,
-  AwsS3StorageProvider
+  AwsS3StorageProvider,
 ];
 
 const logger = Logger.Instance.defaultLogger;
@@ -33,7 +36,7 @@ const main = async (): Promise<void> => {
   for (var i = 0; i < ConfigInstance.Inst.storage.length; i++) {
     const storage = ConfigInstance.Inst.storage[i];
     const prov = EXTENSIONS.find((e) => e.extension_name == storage.type);
-    if (!prov) 
+    if (!prov)
       throw new Error(`Invalid StorageProvider type "${storage.type}"`);
 
     logger.info(
@@ -80,7 +83,7 @@ const main = async (): Promise<void> => {
       credentials: true,
     })
   ); // TODO: Disable in prod!
- 
+
   app.use(bodyParser.urlencoded({ extended: false }));
 
   app.use(
@@ -117,11 +120,30 @@ const main = async (): Promise<void> => {
     await extension.installCron();
   }
 
+  const apiProxy = proxy('http://localhost:3000/', {
+    proxyReqPathResolver: (req) => req.path,
+  });
+  app.use('/', apiProxy);
+
   const PORT = ConfigInstance.Inst.general.port || 3000;
   const HOST = ConfigInstance.Inst.general.host || 'localhost';
-  app.listen(PORT, HOST, () => {
-    logger.info(`VolatileVault is listening at ${HOST}:${PORT}!`);
-  });
+  if (ConfigInstance.Inst.general.ssl) {
+    var server = https
+      .createServer(
+        {
+          key: fs.readFileSync(ConfigInstance.Inst.general.ssl.key_file),
+          cert: fs.readFileSync(ConfigInstance.Inst.general.ssl.cert_file),
+        },
+        app
+      )
+      .listen(PORT, HOST, function () {
+        logger.info(`VolatileVault is listening at http://${HOST}:${PORT}!`);
+      });
+  } else {
+    app.listen(PORT, HOST, () => {
+      logger.info(`VolatileVault is listening at http://${HOST}:${PORT}!`);
+    });
+  }
 };
 
 main().catch((error) => {

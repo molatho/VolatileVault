@@ -52,7 +52,7 @@ static Task RunWebApp(RunOptions quicOptions)
         {
             listenOptions.UseHttps(certificate);
             listenOptions.UseConnectionLogging();
-            listenOptions.Protocols = HttpProtocols.Http3;
+            listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
         });
     });
 
@@ -76,6 +76,7 @@ static Task RunWebApp(RunOptions quicOptions)
             var feature = context.Features.GetRequiredFeature<IHttpWebTransportFeature>();
             if (!feature.IsWebTransportRequest)
             {
+                Console.WriteLine($"WebTransport not present on connection from {context.Connection.RemoteIpAddress}:{context.Connection.RemotePort}");
                 await next(context);
             }
 
@@ -99,6 +100,7 @@ static Task RunWebApp(RunOptions quicOptions)
                 stream = await session.AcceptStreamAsync(CancellationToken.None);
                 if (stream is not null)
                 {
+                Console.WriteLine($"Got WebTransport connection from {context.Connection.RemoteIpAddress}:{context.Connection.RemotePort}");
                     direction = stream.Features.GetRequiredFeature<IStreamDirectionFeature>();
                     if (direction.CanRead && direction.CanWrite)
                     {
@@ -259,17 +261,16 @@ static X509Certificate2 GenerateManualCertificate()
 
     X509Certificate2 cert;
 
-    // Check if the certificate file exists
-    if (File.Exists(certPath) && File.Exists(keyPath))
+    var store = new X509Store("KestrelSampleWebTransportCertificates", StoreLocation.CurrentUser);
+    store.Open(OpenFlags.ReadWrite);
+    if (store.Certificates.Count > 0)
     {
-        string _certPem = File.ReadAllText(certPath);
-        string _keyPem = File.ReadAllText(keyPath);
+        cert = store.Certificates[^1];
 
-        cert = X509Certificate2.CreateFromPem(_certPem, _keyPem);
-
-        // Rotate key if it has expired
+        // rotate key after it expires
         if (DateTime.Parse(cert.GetExpirationDateString(), null) >= DateTimeOffset.UtcNow)
         {
+            store.Close();
             return cert;
         }
     }
@@ -301,6 +302,8 @@ static X509Certificate2 GenerateManualCertificate()
     //Directory.CreateDirectory(Path.GetDirectoryName(certPath)); // Ensure the directory exists
     File.WriteAllText(certPath, certPem);
     File.WriteAllText(keyPath, keyPem);
+    store.Add(cert);
+    store.Close();
 
     return cert;
 }

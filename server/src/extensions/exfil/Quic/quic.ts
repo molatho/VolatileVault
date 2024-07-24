@@ -89,6 +89,8 @@ export class QuicExfilProvider
         'Running the QUIC extension requires a basichttp instance that runs locally; aborting...'
       );
 
+      this.logger.info(`Spawning QUIC server on https://${c.bindInterface.host}:${c.bindInterface.port}...`)
+
     // const proc = child.spawn(
     //   path.join(process.cwd(), dir, binary),
     //   [
