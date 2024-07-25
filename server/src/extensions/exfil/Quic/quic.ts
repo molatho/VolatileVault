@@ -21,6 +21,8 @@ import {
 import express, { Express, Request, Response, NextFunction } from 'express';
 import * as child from 'child_process';
 import path from 'path';
+import * as fs from 'fs';
+import * as crypto from 'crypto';
 
 export class QuicExfilProvider
   extends BaseExtension<ExfilProviderCapabilities, ExfilQuic>
@@ -28,13 +30,36 @@ export class QuicExfilProvider
 {
   private static NAME: string = 'quic';
   private logger: winston.Logger;
+  private cert_hash: string; 
 
   private constructor(cfg: ExtensionItem<ExfilQuic>) {
     super(cfg.name, ['DownloadSingle', 'UploadSingle'], cfg);
     this.logger = Logger.Instance.createChildLogger(
       `${QuicExfilProvider.NAME}:${cfg.name}`
     );
+    this.cert_hash = this.getCertificateHash(cfg.config.ssl.cert_file);
   }
+
+  private getCertificateHash(certPath: string): string {
+    // Read the certificate file
+    const certData = fs.readFileSync(certPath, 'utf-8');
+
+    // Remove the PEM headers and footers and any extra newlines
+    const certBase64 = certData
+        .replace(/-----BEGIN CERTIFICATE-----/g, '')
+        .replace(/-----END CERTIFICATE-----/g, '')
+        .replace(/\s+/g, '');
+
+    // Convert the base64 string to a Buffer
+    const rawData = Buffer.from(certBase64, 'base64');
+
+    // Compute SHA-256 hash of the raw data
+    const hash = crypto.createHash('sha256');
+    hash.update(rawData);
+    const hashDigest = hash.digest('base64');
+
+    return hashDigest;
+}
 
   public static get extension_name(): string {
     return QuicExfilProvider.NAME;
@@ -52,7 +77,10 @@ export class QuicExfilProvider
       type: QuicExfilProvider.NAME,
       display_name: this.cfg.display_name,
       description: this.cfg.description,
-      info: this.config,
+      info: {
+        hosts: this.config.hosts,
+        certificate_hash: this.cert_hash
+      }
     };
   }
 

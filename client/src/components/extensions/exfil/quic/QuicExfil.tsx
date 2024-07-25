@@ -67,7 +67,7 @@ export class QuicExfil extends BaseExfilExtension<ApiConfigQuicExfil> {
         : Api.BASE_URL;
 
     try {
-      const webTransportService = new WebTransportService(`${host}/`);
+      const webTransportService = new WebTransportService(`${host}/`, cfg.certificate_hash);
       await webTransportService.connect();
       return webTransportService;
     } catch (error) {

@@ -33,9 +33,12 @@ static Task RunWebApp(RunOptions quicOptions)
     var builder = WebApplication.CreateBuilder(Environment.GetCommandLineArgs());
 
     // generate a certificate and hash to be shared with the client
-    var certificate = GenerateManualCertificate();
+    GenerateManualCertificate();
+    var certificate = GetCertificates(quicOptions.SslCertFile, quicOptions.SslKeyFile);
     var hash = SHA256.HashData(certificate.RawData);
     var certStr = Convert.ToBase64String(hash);
+
+    Console.WriteLine($"Frontend should use certificate hash {certStr} to connect to this server.");
     var address = ParseResolveIp(quicOptions.Host);
 
     // configure the ports
@@ -256,17 +259,9 @@ static async Task<bool> IsAuthenticated(string token, RunOptions quicOptions)
     }
 }
 
-
-// Adapted from: https://github.com/wegylexy/webtransport
-// We will need to eventually merge this with existing Kestrel certificate generation
-// tracked in issue #41762
 static X509Certificate2 GenerateManualCertificate()
 {
-    const string certPath = "dev.crt";
-    const string keyPath = "dev.pem";
-
     X509Certificate2 cert;
-
     var store = new X509Store("KestrelSampleWebTransportCertificates", StoreLocation.CurrentUser);
     store.Open(OpenFlags.ReadWrite);
     if (store.Certificates.Count > 0)
@@ -280,8 +275,7 @@ static X509Certificate2 GenerateManualCertificate()
             return cert;
         }
     }
-
-    // Generate a new certificate if it doesn't exist or has expired
+    // generate a new cert
     var now = DateTimeOffset.UtcNow;
     SubjectAlternativeNameBuilder sanBuilder = new();
     sanBuilder.AddDnsName("localhost");
@@ -300,18 +294,42 @@ static X509Certificate2 GenerateManualCertificate()
     using var crt = req.CreateSelfSigned(now, now.AddDays(14)); // 14 days is the max duration of a certificate for this
     cert = new(crt.Export(X509ContentType.Pfx));
 
-    // Convert to PEM format
-    string certPem = ConvertToPem(crt);
-    string keyPem = ConvertToPem2(ec);
-
-    // Save the certificate and key to the filesystem
-    //Directory.CreateDirectory(Path.GetDirectoryName(certPath)); // Ensure the directory exists
-    File.WriteAllText(certPath, certPem);
-    File.WriteAllText(keyPath, keyPem);
+    // Save
     store.Add(cert);
     store.Close();
-
     return cert;
+}
+
+static X509Certificate2 GetCertificates(string certFile, string keyFile)
+{
+    var certPem = File.ReadAllText(certFile);
+    var certBytes = Convert.FromBase64String(certPem
+        .Replace("-----BEGIN CERTIFICATE-----", "")
+        .Replace("-----END CERTIFICATE-----", "")
+        .Trim());
+
+    var keyPem = File.ReadAllText(keyFile);
+    var keyBytes = Convert.FromBase64String(keyPem
+        .Replace("-----BEGIN EC PRIVATE KEY-----", "")
+        .Replace("-----END EC PRIVATE KEY-----", "")
+        .Trim());
+
+    var cert = new X509Certificate2(certBytes);
+
+    using (var ecdsa = ECDsa.Create())
+    {
+        ecdsa.ImportECPrivateKey(keyBytes, out _);
+        var certPK = cert.CopyWithPrivateKey(ecdsa);
+
+        using (var store = new X509Store("KestrelSampleWebTransportCertificates-BE", StoreLocation.CurrentUser))
+        {
+            store.Open(OpenFlags.ReadWrite);
+            store.Add(certPK);
+            store.Close();
+        }
+
+        return certPK;
+    }
 }
 
 static string ConvertToPem(X509Certificate2 cert)
@@ -396,6 +414,12 @@ class RunOptions
 
     [Option("webport", HelpText = "Port to bind the web server to", Required = true)]
     public ushort WebPort { get; set; }
+
+    [Option("sslkeyfile", HelpText = "path to the SSL private key file to use", Required = true)]
+    public string SslKeyFile { get; set; }
+
+    [Option("sslcertfile", HelpText = "path to the SSL certificate key file to use", Required = true)]
+    public string SslCertFile { get; set; }
 
     [Option("quicport", HelpText = "Port to bind the quic endpoint to", Required = true)]
     public ushort QuicPort { get; set; }

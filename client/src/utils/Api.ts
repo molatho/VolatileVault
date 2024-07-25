@@ -46,9 +46,7 @@ export interface ApiConfigBaseExfil {
 
 export interface ApiConfigQuicExfil extends ApiConfigBaseExfil {
   hosts: string[];
-  port: number;
-  key: string;
-  cert: string;
+  certificate_hash: string;
 }
 
 export interface ApiConfigBasicHTTPExfil extends ApiConfigBaseExfil {

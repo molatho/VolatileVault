@@ -2,13 +2,15 @@
 
 class WebTransportService {
   private url: string;
+  private hash: string;
   private session: WebTransport | null;
   private stream: WebTransportBidirectionalStream | null;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null;
   private writer: WritableStreamDefaultWriter<Uint8Array> | null;
 
-  constructor(url: string) {
+  constructor(url: string, hash: string) {
     this.url = url;
+    this.hash = hash;
     this.session = null;
     this.stream = null;
     this.reader = null;
@@ -20,10 +22,7 @@ class WebTransportService {
       serverCertificateHashes: [
         {
           algorithm: 'sha-256',
-          value: Uint8Array.from(
-            atob('tMFLlgJGlw4HAKkfqbGdMMREkV92bxQmqcblalKqyEs='), //TODO: Obtain dynamically from backend
-            (c) => c.charCodeAt(0)
-          ),
+          value: Uint8Array.from(atob(this.hash), (c) => c.charCodeAt(0)),
         },
       ],
     });
@@ -95,8 +94,7 @@ class WebTransportService {
         throw new Error('WebTransport is already closed:', err);
       } else {
         throw new Error(
-          'WebTransport is in the process of connecting and cannot be closed:',
-          err
+          'WebTransport is in the process of connecting and cannot be closed'
         );
       }
     }
