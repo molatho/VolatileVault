@@ -120,7 +120,7 @@ const main = async (): Promise<void> => {
     await extension.installCron();
   }
 
-  // TODO: Remove in prod
+  // TODO: Remove in prod - or make configurable via config?
   const apiProxy = proxy('http://localhost:3000/', {
     proxyReqPathResolver: (req) => req.path,
   });

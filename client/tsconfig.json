@@ -6,6 +6,10 @@
       "dom.iterable",
       "esnext"
     ],
+    "typeRoots": [
+      "./node_modules/@types",
+      "/src/components/extensions/exfil/quic/webtrasport.d.ts"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,

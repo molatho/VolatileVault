@@ -21,7 +21,7 @@ class WebTransportService {
         {
           algorithm: 'sha-256',
           value: Uint8Array.from(
-            atob('tMFLlgJGlw4HAKkfqbGdMMREkV92bxQmqcblalKqyEs='), //TODO: Obtain dynamically from backend
+            atob('luehX9wXIWo7kZVRcpL11pI0j33f35QkGQLCTtVjbjU='), //TODO: Obtain dynamically from backend
             (c) => c.charCodeAt(0)
           ),
         },
@@ -96,7 +96,7 @@ class WebTransportService {
       } else {
         throw new Error(
           'WebTransport is in the process of connecting and cannot be closed:',
-          err
+          err ?? {}
         );
       }
     }
@@ -108,7 +108,7 @@ class WebTransportService {
     }
   }
 
-  public async waitForTransportClose(transport: WebTransport): Promise<void> {}
+  public async waitForTransportClose(transport: WebTransport): Promise<void> { }
 }
 
 export default WebTransportService;

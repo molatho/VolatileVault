@@ -90,4 +90,5 @@ export interface ExfilQuic extends BaseExfil {
   hosts: string[];
   serverBinary: string;
   serverDirectory: string;
-}
+  startServer?: boolean;
+} 

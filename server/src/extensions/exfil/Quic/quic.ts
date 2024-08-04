@@ -18,14 +18,13 @@ import {
   ExfilProviderCapabilities,
   FileInformation,
 } from '../provider';
-import express, { Express, Request, Response, NextFunction } from 'express';
+import { Express } from 'express';
 import * as child from 'child_process';
 import path from 'path';
 
 export class QuicExfilProvider
   extends BaseExtension<ExfilProviderCapabilities, ExfilQuic>
-  implements ExfilProvider
-{
+  implements ExfilProvider {
   private static NAME: string = 'quic';
   private logger: winston.Logger;
 
@@ -89,29 +88,31 @@ export class QuicExfilProvider
         'Running the QUIC extension requires a basichttp instance that runs locally; aborting...'
       );
 
+    if (this.config.startServer) {
       this.logger.info(`Spawning QUIC server on https://${c.bindInterface.host}:${c.bindInterface.port}...`)
 
-    // const proc = child.spawn(
-    //   path.join(process.cwd(), dir, binary),
-    //   [
-    //     '--host',
-    //     c.bindInterface.host,
-    //     '--webport', //TODO: Remove, also from quic server code ¯\_(ツ)_/¯
-    //     '5001',
-    //     '--quicport',
-    //     c.bindInterface.port.toString(),
-    //     '--vvhost',
-    //     globalCfg.general.host,
-    //     '--vvport',
-    //     globalCfg.general.port.toString(),
-    //     '--vvext',
-    //     ext.name,
-    //   ],
-    //   { cwd: path.join(process.cwd(), dir), env: process.env }
-    // );
+      const proc = child.spawn(
+        path.join(process.cwd(), dir, binary),
+        [
+          '--host',
+          c.bindInterface.host,
+          '--webport', //TODO: Remove, also from quic server code ¯\_(ツ)_/¯
+          '5001',
+          '--quicport',
+          c.bindInterface.port.toString(),
+          '--vvhost',
+          globalCfg.general.host,
+          '--vvport',
+          globalCfg.general.port.toString(),
+          '--vvext',
+          ext.name,
+        ],
+        { cwd: path.join(process.cwd(), dir), env: process.env }
+      );
+    }
   }
 
-  async installRoutes(backendApp: Express): Promise<void> {}
+  async installRoutes(backendApp: Express): Promise<void> { }
 
   // Unsupported methods
   async uploadSingle(

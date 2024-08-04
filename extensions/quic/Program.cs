@@ -37,6 +37,7 @@ static Task RunWebApp(RunOptions quicOptions)
     var hash = SHA256.HashData(certificate.RawData);
     var certStr = Convert.ToBase64String(hash);
     var address = ParseResolveIp(quicOptions.Host);
+    Console.WriteLine($"Frontend should use certificate hash {certStr} to connect to this server.");
 
     // configure the ports
     builder.WebHost.ConfigureKestrel((context, options) =>
