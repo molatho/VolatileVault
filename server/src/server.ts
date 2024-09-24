@@ -15,7 +15,6 @@ import { AwsS3StorageProvider } from './extensions/storage/AwsS3/awss3';
 import { QuicExfilProvider } from './extensions/exfil/Quic/quic';
 import https from 'https';
 import fs from 'fs';
-import proxy from 'express-http-proxy';
 
 const EXTENSIONS = [
   BasicHTTPExfilProvider,

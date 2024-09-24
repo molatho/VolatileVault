@@ -45,7 +45,7 @@ export default function EventTable({ entries }: EventTableProps) {
 
   const createRow = (entry: EventEntry, idx: number) => {
     const backgroundColor = entry.variant
-      ? entry.variant == 'success'
+      ? entry.variant === 'success'
         ? theme.palette.success.main
         : theme.palette.error.main
       : undefined;

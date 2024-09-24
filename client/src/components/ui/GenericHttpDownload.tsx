@@ -64,7 +64,7 @@ function DownloadBlob({
     try {
       //TODO: add EventTable!
       const res =
-        mode == 'DownloadSingle'
+        mode === 'DownloadSingle'
           ? await exfil.downloadSingle(id, onExfilEvent)
           : await exfil.downloadChunked(id, onExfilEvent);
 
@@ -131,7 +131,7 @@ export default function GenericHttpDownload({ exfil, mode }: DownloadProps) {
   const [files, setFiles] = useState<FileInfo[]>([]);
   var [entries, setEntries] = useState<EventEntry[]>([]);
 
-  if (mode != 'DownloadChunked' && mode != 'DownloadSingle')
+  if (mode !== 'DownloadChunked' && mode !== 'DownloadSingle')
     throw new Error(`Unsupported mode ${mode}`);
 
   const doDecrypt = () => {
@@ -202,17 +202,17 @@ export default function GenericHttpDownload({ exfil, mode }: DownloadProps) {
           setBlob(blob);
           setId(id);
         }}
-        enabled={blob == null}
+        enabled={blob === null}
         onExfilEvent={addEntry}
       />
       <EnterPassword
         onPasswordEntered={setPassword}
         confirm={false}
-        enabled={blob != null && canDecrypt}
+        enabled={blob !== null && canDecrypt}
       >
         <Button
           variant="contained"
-          disabled={blob == null || !canDecrypt}
+          disabled={blob === null || !canDecrypt}
           onClick={doDecrypt}
         >
           Decrypt

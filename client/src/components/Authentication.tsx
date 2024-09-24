@@ -32,10 +32,10 @@ export default function Authentication({
       try {
         const res = await api.isAuthenticated();
         setAuthenticated(res.success);
-        if (token == null) snackSuccess('Authentication successful');
+        if (token === null) snackSuccess('Authentication successful');
         onAuthenticated(token as string);
       } catch (err) {
-        if (token != null) {
+        if (token !== null) {
           api.clearToken();
           snackError('Token expired or invalid; you need to re-authenticate.');
         } else {

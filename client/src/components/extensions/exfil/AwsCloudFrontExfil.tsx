@@ -93,7 +93,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
           }, Size: ${formatSize(initChunkedData.size)}`
         );
 
-      if (this.exfilConfig.download.mode == 'Dynamic')
+      if (this.exfilConfig.download.mode === 'Dynamic')
         reportEvent &&
           reportEvent(
             'Control',
@@ -168,7 +168,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
       return Promise.reject(
         Api.fail_from_error(
           error,
-          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+          (error as any)?.response?.status === 404 ? 'ID not found' : 'Failure'
         ) as ApiDownloadResponse
       );
     }
@@ -195,7 +195,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
       data.slice(key * chunksize, key * chunksize + chunksize)
     );
 
-    if (this.exfilConfig.upload.mode == 'Dynamic')
+    if (this.exfilConfig.upload.mode === 'Dynamic')
       reportEvent &&
         reportEvent(
           'Control',
@@ -289,7 +289,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
       return Promise.reject(
         Api.fail_from_error(
           error,
-          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+          (error as any)?.response?.status === 404 ? 'ID not found' : 'Failure'
         ) as ApiDownloadResponse
       );
     }
@@ -325,7 +325,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
       return Promise.reject(
         Api.fail_from_error(
           error,
-          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+          (error as any)?.response?.status === 404 ? 'ID not found' : 'Failure'
         ) as ApiDownloadResponse
       );
     }
@@ -355,7 +355,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
       return Promise.reject(
         Api.fail_from_error(
           error,
-          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+          (error as any)?.response?.status === 404 ? 'ID not found' : 'Failure'
         ) as TransferStatusResponse
       );
     }
@@ -379,7 +379,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
         }
       );
 
-      if (res.status != 200)
+      if (res.status !== 200)
         return Promise.reject(
           Api.fail_from_error(undefined, 'Failed to terminate download')
         );
@@ -389,7 +389,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
       return Promise.reject(
         Api.fail_from_error(
           error,
-          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+          (error as any)?.response?.status === 404 ? 'ID not found' : 'Failure'
         ) as ApiResponse
       );
     }
@@ -431,7 +431,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
       return Promise.reject(
         Api.fail_from_error(
           error,
-          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+          (error as any)?.response?.status === 404 ? 'ID not found' : 'Failure'
         ) as ApiDownloadResponse
       );
     }
@@ -461,7 +461,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
         }
       );
 
-      if (res.status != 200)
+      if (res.status !== 200)
         return Promise.reject(
           Api.fail_from_error(undefined, `Failed to upload chunk ${chunkNo}`)
         );

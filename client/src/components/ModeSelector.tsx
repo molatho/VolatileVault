@@ -21,9 +21,9 @@ export default function ModeSelector({ exfils, onSelected }: SelectorProps) {
   var hasDownloadChunked = exfils.find((e) => e.canDownloadChunked);
 
   const onModeSelected = (type: SelectedMode) => {
-    if (type == 'None') throw new Error('Invalid selector type None');
+    if (type === 'None') throw new Error('Invalid selector type None');
     const matchedExfils = exfils.filter((e) =>
-      e.capabilities.find((c) => c == type)
+      e.capabilities.find((c) => c === type)
     );
 
     onSelected(type, matchedExfils);
@@ -38,7 +38,7 @@ export default function ModeSelector({ exfils, onSelected }: SelectorProps) {
               variant="contained"
               onClick={() => onModeSelected('UploadSingle')}
             >
-              Basic upload
+              Upload
             </Button>
           )}
           {hasDownloadSingle && (
@@ -46,7 +46,7 @@ export default function ModeSelector({ exfils, onSelected }: SelectorProps) {
               variant="contained"
               onClick={() => onModeSelected('DownloadSingle')}
             >
-              Basic download
+              Download
             </Button>
           )}
         </Stack>

@@ -88,7 +88,7 @@ export class BasicHttpExfil extends BaseExfilExtension<ApiConfigBasicHTTPExfil> 
       return Promise.reject(
         Api.fail_from_error(
           error,
-          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+          (error as any)?.response?.status === 404 ? 'ID not found' : 'Failure'
         ) as ApiDownloadResponse
       );
     }

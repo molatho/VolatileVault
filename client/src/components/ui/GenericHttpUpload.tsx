@@ -98,8 +98,8 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
         .concat(acceptedFiles)
         .filter(
           (f, i, a) =>
-            i == a.length - 1 ||
-            a.slice(i + 1).findIndex((_f) => _f.name == f.name) === -1
+            i === a.length - 1 ||
+            a.slice(i + 1).findIndex((_f) => _f.name === f.name) === -1
         )
     );
   }, [acceptedFiles]);
@@ -108,7 +108,7 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
     const updateEntropies = async () => {
       const res = await Promise.all(
         selectedFiles.map(async (file) => {
-          if (Object.keys(entropies).findIndex((k) => k == file.name) === -1) {
+          if (Object.keys(entropies).findIndex((k) => k === file.name) === -1) {
             const data = await file.arrayBuffer();
             entropies[file.name] = fromArrayBuffer(data);
             setEntropies({ ...entropies });
@@ -121,7 +121,7 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
       if (res.length)
         setEntropies(
           Object.keys(res[res.length - 1]).reduce((res, key) => {
-            if (selectedFiles.findIndex((f) => f.name == key) !== -1)
+            if (selectedFiles.findIndex((f) => f.name === key) !== -1)
               res[key] = entropies[key];
             return res;
           }, {} as { [key: string]: number })
@@ -137,7 +137,7 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
   }, [selectedFiles]);
 
   const handleRemove = (file: File) => {
-    setSelectedFiles(selectedFiles.filter((f) => f != file));
+    setSelectedFiles(selectedFiles.filter((f) => f !== file));
   };
 
   const fileRows = selectedFiles.map((file) => (
@@ -149,7 +149,7 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
         {file.name}
       </TableCell>
       <TableCell align="right">
-        {Object.keys(entropies).findIndex((k) => k == file.name) !== -1
+        {Object.keys(entropies).findIndex((k) => k === file.name) !== -1
           ? entropies[file.name].toFixed(2)
           : 'n/a'}
       </TableCell>
@@ -319,7 +319,7 @@ function ProcessUpload({
           compressionOptions: { level: 9 },
         },
         (meta) => {
-          if (meta.currentFile && lastFile != meta.currentFile) {
+          if (meta.currentFile && lastFile !== meta.currentFile) {
             addEntry(
               'Compression',
               `Processing "${meta.currentFile}" (${meta.percent.toFixed(
@@ -380,7 +380,7 @@ function ProcessUpload({
 
       addEntry('Upload', 'Starting...');
       const res =
-        mode == 'UploadSingle'
+        mode === 'UploadSingle'
           ? await exfil.uploadSingle(storage.name, tmp, addEntry)
           : await exfil.uploadChunked(storage.name, tmp, addEntry);
       addEntry('Upload', 'Done!', 'success');
@@ -459,7 +459,7 @@ export default function GenericHttpUpload({
   const [step, setStep] = useState(0);
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null);
 
-  if (mode != 'UploadChunked' && mode != 'UploadSingle')
+  if (mode !== 'UploadChunked' && mode !== 'UploadSingle')
     throw new Error(`Unsupported mode ${mode}`);
 
   const steps = ['Data Input', 'Process & Upload', 'Done'];
@@ -495,7 +495,7 @@ export default function GenericHttpUpload({
               maxFileSize={maxSize}
               mode={mode}
             />
-            {step == 2 && uploadInfo != null && (
+            {step === 2 && uploadInfo !== null && (
               <UploadInfoElement info={uploadInfo} />
             )}
           </>

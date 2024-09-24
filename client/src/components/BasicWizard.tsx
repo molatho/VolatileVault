@@ -58,7 +58,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
     useState<StorageExtension | null>(null);
   const [storageConfigured, setStorageConfigured] = useState(false);
   const [step, setStep] = useState(Steps.Authentication);
-  const isUploadMode = mode == 'UploadChunked' || mode == 'UploadSingle';
+  const isUploadMode = mode === 'UploadChunked' || mode === 'UploadSingle';
 
   useEffect(() => {
     async function getConfig() {
@@ -80,7 +80,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
     var exfils: GenericExfilExtension[] = [];
 
     for (const cexfil of config.exfils) {
-      const ext = getExfils().find((e) => e.extension_name == cexfil.type);
+      const ext = getExfils().find((e) => e.extension_name === cexfil.type);
       if (!ext) throw new Error(`Unknown exfil type ${cexfil.type}`);
       exfils.push(ext.create(api, cexfil));
     }
@@ -94,7 +94,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
     var storages: BasicExtension<StorageTypes>[] = [];
 
     for (const cexfil of config.storages) {
-      const ext = getStorages().find((e) => e.extension_name == cexfil.type);
+      const ext = getStorages().find((e) => e.extension_name === cexfil.type);
       if (!ext) throw new Error(`Unknown storage type ${cexfil.type}`);
       storages.push(ext.create(api, cexfil));
     }
@@ -253,7 +253,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
         <Step key={Steps.SelectAction}>
           <StepButton onClick={navToModeSelect}>
             <Typography variant="subtitle1">
-              {mode == 'None' ? (
+              {mode === 'None' ? (
                 'What would you like to do?'
               ) : (
                 <i>You will {modeToString(mode)}.</i>
@@ -271,7 +271,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
             onClick={navToExfilSelect}
           >
             <Typography variant="subtitle1">
-              {selectedExfil == null ? (
+              {selectedExfil === null ? (
                 'Which transport should be used for exfiltration?'
               ) : (
                 <i>
@@ -327,7 +327,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
             onClick={navToStorageSelect}
           >
             <Typography variant="subtitle1">
-              {selectedStorage == null ? (
+              {selectedStorage === null ? (
                 isUploadMode ? (
                   'Which option should be used for storage?'
                 ) : (
@@ -383,7 +383,7 @@ export default function BasicWizard({ api, onFinished }: WizardProps) {
           </StepContent>
         </Step>
         {/* 6 - Confirm */}
-        {step == Steps.Confirm && (
+        {step === Steps.Confirm && (
           <Step key={Steps.Confirm}>
             <StepLabel>
               <Typography variant="subtitle1">Let's go!</Typography>

@@ -19,12 +19,12 @@ class WebTransportService {
 
   public async connect(): Promise<void> {
     this.session = new WebTransport(this.url, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: Uint8Array.from(atob(this.hash), (c) => c.charCodeAt(0)),
-        },
-      ],
+      // serverCertificateHashes: [
+      //   {
+      //     algorithm: 'sha-256',
+      //     value: Uint8Array.from(atob(this.hash), (c) => c.charCodeAt(0)),
+      //   },
+      // ],
     });
 
     await this.session.ready;

@@ -107,7 +107,7 @@ export class QuicExfil extends BaseExfilExtension<ApiConfigQuicExfil> {
       return Promise.reject(
         Api.fail_from_error(
           error,
-          (error as any)?.response?.status == 404 ? 'ID not found' : 'Failure'
+          (error as any)?.response?.status === 404 ? 'ID not found' : 'Failure'
         ) as ApiDownloadResponse
       );
     }

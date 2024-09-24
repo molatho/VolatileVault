@@ -59,7 +59,6 @@ export default function BasicSelector({
   items,
   onSelected,
 }: BasicSelectorProps) {
-  const [idx, setIdx] = useState(0);
   const [expanded, setExpanded] = useState(0);
 
   return (
@@ -67,7 +66,7 @@ export default function BasicSelector({
       {items.map((item, idx) => (
         <Accordion
           key={idx}
-          expanded={expanded == idx || items.length == 1}
+          expanded={expanded === idx || items.length === 1}
           onChange={() => setExpanded(idx)}
         >
           <AccordionSummary>
