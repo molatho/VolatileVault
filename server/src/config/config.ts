@@ -17,8 +17,10 @@ export interface General {
 }
 
 export interface SslCert {
-  key_file: string;
-  cert_file: string;
+  key_file?: string;
+  cert_file?: string;
+  pfx_file?: string;
+  pfx_pass?: string;
 }
 
 export interface ExtensionItem<T> {

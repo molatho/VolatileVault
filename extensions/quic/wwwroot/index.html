@@ -76,12 +76,12 @@
             stateLabel.innerHTML = "Ready to connect...";
 
             session = new WebTransport(connectionUrl.value, {
-                serverCertificateHashes: [
-                    {
-                        algorithm: "sha-256",
-                        value: Uint8Array.from(atob(CERTIFICATE), c => c.charCodeAt(0))
-                    }
-                ]
+                // serverCertificateHashes: [
+                //     {
+                //         algorithm: "sha-256",
+                //         value: Uint8Array.from(atob(CERTIFICATE), c => c.charCodeAt(0))
+                //     }
+                // ]
             });
             stateLabel.innerHTML = "Connecting...";
 

@@ -1,8 +1,6 @@
 #nullable enable
 
 using System.Net;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -31,19 +29,19 @@ static IPAddress ParseResolveIp(string hostOrIp)
 static Task RunWebApp(RunOptions quicOptions)
 {
     var builder = WebApplication.CreateBuilder(Environment.GetCommandLineArgs());
-
-    // generate a certificate and hash to be shared with the client
-    GenerateManualCertificate();
-    var certificate = GetCertificates(quicOptions.SslCertFile, quicOptions.SslKeyFile);
-    var hash = SHA256.HashData(certificate.RawData);
-    var certStr = Convert.ToBase64String(hash);
-
-    Console.WriteLine($"Frontend should use certificate hash {certStr} to connect to this server.");
     var address = ParseResolveIp(quicOptions.Host);
 
     // configure the ports
     builder.WebHost.ConfigureKestrel((context, options) =>
     {
+        // check if the quicOptions.PfxFile exists
+        if (!System.IO.File.Exists(quicOptions.PfxFile)){
+            Console.WriteLine($"Pfx file {quicOptions.PfxFile} does not exist!");
+            Environment.Exit(1);
+        }else{
+            Console.WriteLine($"Pfx file {quicOptions.PfxFile} found!");
+        }
+        
         // website configured port
         options.Listen(address, quicOptions.WebPort, listenOptions =>
         {
@@ -53,11 +51,17 @@ static Task RunWebApp(RunOptions quicOptions)
         // webtransport configured port
         options.Listen(address, quicOptions.QuicPort, listenOptions =>
         {
-            listenOptions.UseHttps(certificate);
+            //listenOptions.UseHttps(certificate);
+            //openssl pkcs12 -export -in cert_full.cer -inkey cert.key -out cert.pfx
+            listenOptions.UseHttps(quicOptions.PfxFile,quicOptions.PfxPass);
             listenOptions.UseConnectionLogging();
-            listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+            listenOptions.Protocols = HttpProtocols.Http3;
         });
     });
+
+    builder.Logging.ClearProviders();
+    builder.Logging.AddConsole();
+    builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
     var app = builder.Build();
 
@@ -66,58 +70,47 @@ static Task RunWebApp(RunOptions quicOptions)
 
     app.Use(async (context, next) =>
     {
-        // configure /certificate.js to inject the certificate hash
-        if (context.Request.Path.Value?.Equals("/certificate.js") ?? false)
+        var feature = context.Features.GetRequiredFeature<IHttpWebTransportFeature>();
+        if (!feature.IsWebTransportRequest)
         {
-            context.Response.ContentType = "application/javascript";
-            await context.Response.WriteAsync($"var CERTIFICATE = '{certStr}';");
+            Console.WriteLine($"WebTransport not present on connection from {context.Connection.RemoteIpAddress}:{context.Connection.RemotePort}");
+            await next(context);
         }
 
-        // configure the serverside application
-        else
+        IWebTransportSession? session = null;
+        try
         {
-            var feature = context.Features.GetRequiredFeature<IHttpWebTransportFeature>();
-            if (!feature.IsWebTransportRequest)
-            {
-                Console.WriteLine($"WebTransport not present on connection from {context.Connection.RemoteIpAddress}:{context.Connection.RemotePort}");
-                await next(context);
-            }
+            session = await feature.AcceptAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
 
-            IWebTransportSession? session = null;
-            try
-            {
-                session = await feature.AcceptAsync(CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
+        if (session is null)
+        {
+            return;
+        }
 
-            if (session is null)
+        while (true)
+        {
+            ConnectionContext? stream = null;
+            IStreamDirectionFeature? direction = null;
+            // wait until we get a stream
+            stream = await session.AcceptStreamAsync(CancellationToken.None);
+            if (stream is not null)
             {
-                return;
-            }
-
-            while (true)
-            {
-                ConnectionContext? stream = null;
-                IStreamDirectionFeature? direction = null;
-                // wait until we get a stream
-                stream = await session.AcceptStreamAsync(CancellationToken.None);
-                if (stream is not null)
+                Console.WriteLine($"Got WebTransport connection from {context.Connection.RemoteIpAddress}:{context.Connection.RemotePort}");
+                direction = stream.Features.GetRequiredFeature<IStreamDirectionFeature>();
+                if (direction.CanRead && direction.CanWrite)
                 {
-                    Console.WriteLine($"Got WebTransport connection from {context.Connection.RemoteIpAddress}:{context.Connection.RemotePort}");
-                    direction = stream.Features.GetRequiredFeature<IStreamDirectionFeature>();
-                    if (direction.CanRead && direction.CanWrite)
-                    {
-                        _ = handleBidirectionalStream(session, stream, quicOptions);
-                    }
-                    else
-                    {
-                        // We'll only allow bidirectional streams ¯\_(ツ)_/¯
-                        stream.Abort();
-                        session.Abort(0x0101); // H3_GENERAL_PROTOCOL_ERROR: Peer violated protocol requirements in a way that does not match a more specific error code or endpoint declines to use the more specific error code.
-                    }
+                    _ = handleBidirectionalStream(session, stream, quicOptions);
+                }
+                else
+                {
+                    // We'll only allow bidirectional streams ¯\_(ツ)_/¯
+                    stream.Abort();
+                    session.Abort(0x0101); // H3_GENERAL_PROTOCOL_ERROR: Peer violated protocol requirements in a way that does not match a more specific error code or endpoint declines to use the more specific error code.
                 }
             }
         }
@@ -125,7 +118,6 @@ static Task RunWebApp(RunOptions quicOptions)
 
     return app.RunAsync();
 }
-
 
 static async Task handleBidirectionalStream(IWebTransportSession session, ConnectionContext stream, RunOptions quicOptions)
 {
@@ -259,96 +251,6 @@ static async Task<bool> IsAuthenticated(string token, RunOptions quicOptions)
     }
 }
 
-static X509Certificate2 GenerateManualCertificate()
-{
-    X509Certificate2 cert;
-    var store = new X509Store("KestrelSampleWebTransportCertificates", StoreLocation.CurrentUser);
-    store.Open(OpenFlags.ReadWrite);
-    if (store.Certificates.Count > 0)
-    {
-        cert = store.Certificates[^1];
-
-        // rotate key after it expires
-        if (DateTime.Parse(cert.GetExpirationDateString(), null) >= DateTimeOffset.UtcNow)
-        {
-            store.Close();
-            return cert;
-        }
-    }
-    // generate a new cert
-    var now = DateTimeOffset.UtcNow;
-    SubjectAlternativeNameBuilder sanBuilder = new();
-    sanBuilder.AddDnsName("localhost");
-    using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-    CertificateRequest req = new("CN=localhost", ec, HashAlgorithmName.SHA256);
-    // Adds purpose
-    req.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection
-    {
-        new("1.3.6.1.5.5.7.3.1") // serverAuth
-    }, false));
-    // Adds usage
-    req.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, false));
-    // Adds subject alternate names
-    req.CertificateExtensions.Add(sanBuilder.Build());
-    // Sign
-    using var crt = req.CreateSelfSigned(now, now.AddDays(14)); // 14 days is the max duration of a certificate for this
-    cert = new(crt.Export(X509ContentType.Pfx));
-
-    // Save
-    store.Add(cert);
-    store.Close();
-    return cert;
-}
-
-static X509Certificate2 GetCertificates(string certFile, string keyFile)
-{
-    var certPem = File.ReadAllText(certFile);
-    var certBytes = Convert.FromBase64String(certPem
-        .Replace("-----BEGIN CERTIFICATE-----", "")
-        .Replace("-----END CERTIFICATE-----", "")
-        .Trim());
-
-    var keyPem = File.ReadAllText(keyFile);
-    var keyBytes = Convert.FromBase64String(keyPem
-        .Replace("-----BEGIN EC PRIVATE KEY-----", "")
-        .Replace("-----END EC PRIVATE KEY-----", "")
-        .Trim());
-
-    var cert = new X509Certificate2(certBytes);
-
-    using (var ecdsa = ECDsa.Create())
-    {
-        ecdsa.ImportECPrivateKey(keyBytes, out _);
-        var certPK = cert.CopyWithPrivateKey(ecdsa);
-
-        using (var store = new X509Store("KestrelSampleWebTransportCertificates-BE", StoreLocation.CurrentUser))
-        {
-            store.Open(OpenFlags.ReadWrite);
-            store.Add(certPK);
-            store.Close();
-        }
-
-        return certPK;
-    }
-}
-
-static string ConvertToPem(X509Certificate2 cert)
-{
-    StringBuilder builder = new();
-    builder.AppendLine("-----BEGIN CERTIFICATE-----");
-    builder.AppendLine(Convert.ToBase64String(cert.Export(X509ContentType.Cert), Base64FormattingOptions.InsertLineBreaks));
-    builder.AppendLine("-----END CERTIFICATE-----");
-    return builder.ToString();
-}
-
-static string ConvertToPem2(ECDsa key)
-{
-    StringBuilder builder = new();
-    builder.AppendLine("-----BEGIN PRIVATE KEY-----");
-    builder.AppendLine(Convert.ToBase64String(key.ExportPkcs8PrivateKey(), Base64FormattingOptions.InsertLineBreaks));
-    builder.AppendLine("-----END PRIVATE KEY-----");
-    return builder.ToString();
-}
 
 class QuicRequest
 {
@@ -369,7 +271,6 @@ class QuicRequest
     [JsonPropertyName("download_id")]
     public string? DownloadId { get; set; }
 }
-
 
 class QuicResponse
 {
@@ -415,11 +316,11 @@ class RunOptions
     [Option("webport", HelpText = "Port to bind the web server to", Required = true)]
     public ushort WebPort { get; set; }
 
-    [Option("sslkeyfile", HelpText = "path to the SSL private key file to use", Required = true)]
-    public string SslKeyFile { get; set; }
+    [Option("pfxfile", HelpText = "path to the SSL private key file to use", Required = true)]
+    public string PfxFile { get; set; }
 
-    [Option("sslcertfile", HelpText = "path to the SSL certificate key file to use", Required = true)]
-    public string SslCertFile { get; set; }
+    [Option("pfxpass", HelpText = "path to the SSL certificate key file to use", Required = true)]
+    public string PfxPass { get; set; }
 
     [Option("quicport", HelpText = "Port to bind the quic endpoint to", Required = true)]
     public ushort QuicPort { get; set; }

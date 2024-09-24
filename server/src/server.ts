@@ -120,12 +120,6 @@ const main = async (): Promise<void> => {
     await extension.installCron();
   }
 
-  // TODO: Remove in prod
-  const apiProxy = proxy('http://localhost:3000/', {
-    proxyReqPathResolver: (req) => req.path,
-  });
-  app.use('/', apiProxy);
-
   const PORT = ConfigInstance.Inst.general.port || 3000;
   const HOST = ConfigInstance.Inst.general.host || 'localhost';
   if (ConfigInstance.Inst.general.ssl) {

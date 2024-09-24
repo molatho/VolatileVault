@@ -12,3 +12,4 @@ config*.yaml
 *.pem
 
 cert.*
+*.cer
