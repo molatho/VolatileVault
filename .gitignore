@@ -3,3 +3,4 @@ npm-debug.log
 client/src/compiled/
 .env
 *.bin
+.vs/

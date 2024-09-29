@@ -106,7 +106,6 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
       var domainsReady = false;
       do {
         const info = await this.getTransferStatus(
-          initChunkedData.hosts[0],
           initChunkedData.id
         );
         domainsReady = info.status;
@@ -208,12 +207,11 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
     var domainsReady = false;
     do {
       const info = await this.getTransferStatus(
-        initChunkedData.hosts[0],
         initChunkedData.id
       );
       domainsReady = info.status;
       if (!domainsReady) {
-        await delay(10);
+        await delay(10000);
         reportEvent &&
           reportEvent('Info', 'Waiting for distributions to deploy...');
       }
@@ -332,7 +330,6 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
   }
 
   async getTransferStatus(
-    host: string,
     transferId: string
   ): Promise<TransferStatusResponse> {
     try {
@@ -342,7 +339,6 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
         },
         responseType: 'json',
         withCredentials: true,
-        baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
       });
 
       if (!res.data)

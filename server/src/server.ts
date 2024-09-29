@@ -123,15 +123,12 @@ const main = async (): Promise<void> => {
   const HOST = ConfigInstance.Inst.general.host || 'localhost';
   if (ConfigInstance.Inst.general.ssl) {
     var server = https
-      .createServer(
-        {
+      .createServer({
           key: fs.readFileSync(ConfigInstance.Inst.general.ssl.key_file),
           cert: fs.readFileSync(ConfigInstance.Inst.general.ssl.cert_file),
         },
-        app
-      )
-      .listen(PORT, HOST, function () {
-        logger.info(`VolatileVault is listening at http://${HOST}:${PORT}!`);
+      app).listen(PORT, HOST, function () {
+        logger.info(`VolatileVault is listening at https://${HOST}:${PORT}!`);
       });
   } else {
     app.listen(PORT, HOST, () => {

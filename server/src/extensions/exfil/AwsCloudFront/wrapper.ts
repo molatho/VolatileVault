@@ -231,6 +231,7 @@ export class CloudFrontWrapper {
     });
     await this.client.send(deleteCommand);
     this.logger.info(`CloudFront distribution deleted: ${id}`);
+    //TODO: delete only 6 domains at a time with a delay of a second to not run in to rate limiting
   }
 
   private async waitForDistributionDeployed(

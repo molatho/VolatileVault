@@ -107,7 +107,7 @@ export class QuicExfilProvider
         '--vvhost',
         ext.config.server.host,
         '--vvport',
-        ext.config.server.port.toString(), //TODO: change that to the internal port currently 8443
+        ext.config.server.port.toString(),
         '--vvext',
         ext.name,
       ],
@@ -116,12 +116,12 @@ export class QuicExfilProvider
 
     // Capture standard output
     quicServer.stdout.on('data', (data) => {
-      console.log(`QUIC Server STDOUT: ${data}`);
+      console.log(`-----QUIC Server STDOUT: ${data}`);
     });
 
     // Capture standard error
     quicServer.stderr.on('data', (data) => {
-      console.error(`QUIC Server STDERR: ${data}`);
+      console.error(`-----QUIC Server STDERR: ${data}`);
     });
   }
 

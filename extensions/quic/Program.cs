@@ -9,6 +9,11 @@ using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Transport.Quic;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
+using System.Security.Cryptography.X509Certificates;
+using System.Security.Authentication;
+
 
 await Parser.Default.ParseArguments<RunOptions>(Environment.GetCommandLineArgs())
     .WithParsedAsync<RunOptions>(async o => await RunWebApp(o));
@@ -48,14 +53,38 @@ static Task RunWebApp(RunOptions quicOptions)
             listenOptions.UseHttps();
             listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
         });
+
+        // Load certificate and key from PEM files
+        X509Certificate2 serverCertificate = null;
+        try
+        {
+            serverCertificate = new X509Certificate2(quicOptions.PfxFile, quicOptions.PfxPass);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Failed to load certificate: {e.Message}");
+            Environment.Exit(1);
+        }
+
         // webtransport configured port
         options.Listen(address, quicOptions.QuicPort, listenOptions =>
         {
-            //listenOptions.UseHttps(certificate);
-            //openssl pkcs12 -export -in cert_full.cer -inkey cert.key -out cert.pfx
-            listenOptions.UseHttps(quicOptions.PfxFile,quicOptions.PfxPass);
+
+            // var httpsOptions = new HttpsConnectionAdapterOptions
+            // {
+            //     ServerCertificate = serverCertificate,
+            //     SslProtocols = SslProtocols.Tls13,
+            //     ClientCertificateMode = ClientCertificateMode.NoCertificate,
+            //     CheckCertificateRevocation = false,
+            //     ClientCertificateValidation = (cert, chain, errors) => true,
+            // };
+            // listenOptions.UseHttps(httpsOptions);
             listenOptions.UseConnectionLogging();
             listenOptions.Protocols = HttpProtocols.Http3;
+
+            //openssl pkcs12 -export -in cert_full.cer -inkey cert.key -out cert.pfx
+            //DISABLE YOUR ADGUARD, IT BREAKS YOUR CERTIFICATE!!
+            listenOptions.UseHttps(quicOptions.PfxFile, quicOptions.PfxPass);
         });
     });
 

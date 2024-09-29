@@ -1,12 +1,14 @@
-﻿{
+{
   "profiles": {
     "WebTransportInteractiveSample": {
       "commandName": "Project",
-      "dotnetRunMessages": true,
-      "applicationUrl": "https://localhost:5001",
+      "commandLineArgs": "--host 0.0.0.0 --webport 5001 --quicport 5002 --pfxfile \"cert.pfx\" --pfxpass --vvhost 127.0.0.1 --vvport 1337 --vvext internal",
+      "workingDirectory": "C:\\Users\\patri\\sources\\repos\\VolatileVault\\extensions\\quic",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      }
+      },
+      "dotnetRunMessages": true,
+      "applicationUrl": "https://localhost:5001"
     }
   }
 }
