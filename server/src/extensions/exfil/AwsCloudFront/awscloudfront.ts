@@ -71,11 +71,11 @@ export class AwsCloudFrontExfilProvider
   private staticUploadIdx: number;
 
   public get max_total_size(): number {
-    return this.config.max_total_size ?? 100 * 1024 * 1024; // Default to 100MB
+    return this.config.max_total_size * 1024 * 1024 ?? 100 * 1024 * 1024; // Default to 100MB
   }
 
   public get chunk_size(): number {
-    return this.config.chunk_size ?? 10 * 1024 * 1024; // Default to 10MB
+    return this.config.chunk_size * 1024 * 1024 ?? 10 * 1024 * 1024; // Default to 10MB
   }
 
   private constructor(cfg: ExtensionItem<ExfilAwsCloudFront>) {
@@ -263,7 +263,7 @@ export class AwsCloudFrontExfilProvider
 
           const size = parseInt(req.params?.size);
           if (Number.isNaN(size) || size <= 0) throw new Error('Invalid size');
-          if (size > this.max_total_size)
+          if (size > this.max_total_size * 1024 * 1024)
             throw new Error('Maximum file size exceeded');
 
           // Validate that storage exists
@@ -330,7 +330,7 @@ export class AwsCloudFrontExfilProvider
     const chunkedUpload = express.Router();
     chunkedUpload.use(
       bodyParser.raw({
-        limit: this.chunk_size,
+        limit: this.chunk_size * 1024*1024,
         type: 'application/octet-stream',
       })
     );

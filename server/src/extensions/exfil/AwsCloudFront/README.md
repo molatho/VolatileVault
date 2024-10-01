@@ -20,8 +20,8 @@ exfil:
     distribution_tag: 'volatilevault'
     domain: my.cool.site
     folder: './files_aws'
-    chunk_size: 1000000
-    max_total_size: 10000000
+    chunk_size: 10
+    max_total_size: 100
     upload:
       mode: 'Static'
       max_duration: 5
@@ -50,8 +50,8 @@ Fields:
 - `distribution_tag`: Tag to apply to distributions so they can be associated with this VV instance.
 - `domain`: Target domain to proxy traffic to - your VV server should run here.
 - `folder`: Absolute or relative path to a folder to temporarily store chunks for uploads/downloads in.
-- `chunk_size`: Maximum amount of bytes transferred per chunk. Used to calculate the number of distributions to register (in `Dynamic` mode). Example: `chunk_size: 10` will result in `5` distributions being spawned when uploading a file of `45` bytes.
-- `max_total_size`: Maximum allowed size of a single data transfer (upload or download).
+- `chunk_size`: Maximum amount of MB transferred per chunk. Used to calculate the number of distributions to register (in `Dynamic` mode). Example: `chunk_size: 10` will result in `5` distributions being spawned when uploading a file of `45` MB.
+- `max_total_size`: Maximum allowed size of a single data transfer (upload or download) in MB.
 - `upload`/`download`: Configuration for file uploads and downloads, respectively:
   - `mode`: Either `Dynamic` or `Static`
     - `Dynamic`: AWS CloudFront distributions are registered and deployed dynamically. While this supplies you with fresh distributions for each file transfer, it can take some time for them to deploy. Requires you to specify `max_duration`.

@@ -26,7 +26,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import jszip from 'jszip';
 import { encryptSymmetric } from '../../utils/Crypto';
 import { enqueueSnackbar } from 'notistack';
-import moment from 'moment';
+import moment, { max } from 'moment';
 import EnterPassword from '../EnterPassword';
 import { calcSize, formatSize } from '../../utils/Files';
 import { fromArrayBuffer } from '../../utils/Entropy';
@@ -36,9 +36,10 @@ import { SelectedMode } from '../ModeSelector';
 
 interface FileSelectionProps {
   onFilesSelected: (files: File[]) => void;
+  maxFileSize?: number;
 }
 
-function FileSelection({ onFilesSelected }: FileSelectionProps) {
+function FileSelection({ onFilesSelected, maxFileSize }: FileSelectionProps) {
   const baseStyle = {
     flex: 1,
     display: 'flex',
@@ -69,6 +70,7 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [entropies, setEntropies] = useState<{ [key: string]: number }>({});
+  const maxFZ = maxFileSize ?? 0;
 
   const {
     acceptedFiles,
@@ -204,7 +206,7 @@ function FileSelection({ onFilesSelected }: FileSelectionProps) {
           <Typography>{`Total: ${selectedFiles.length} files`}</Typography>
         </Grid>
         <Grid item xs={4}>
-          <Typography>Size: {formatSize(calcSize(selectedFiles))}</Typography>
+          <Typography>Size: {formatSize(calcSize(selectedFiles))}/{formatSize(maxFZ)} </Typography>
         </Grid>
         <Grid item xs={4}>
           <Box display="flex" justifyContent="flex-end">
@@ -236,7 +238,7 @@ function DataInput({ onFinished, maxFileSize }: DataInputProps) {
 
   return (
     <Stack direction="column" spacing={2}>
-      <FileSelection onFilesSelected={setFiles} />
+      <FileSelection onFilesSelected={setFiles} maxFileSize={maxFileSize} />
       <EnterPassword onPasswordEntered={setPassword} confirm />
       {maxFileSize && calcSize(files) > maxFileSize && (
         <Alert severity="warning">
@@ -464,7 +466,8 @@ export default function GenericHttpUpload({
 
   const steps = ['Data Input', 'Process & Upload', 'Done'];
 
-  const maxSize = exfil.getConfig().max_total_size;
+  const maxSizeMb = exfil.getConfig().max_total_size ?? 0;
+  const maxSize = maxSizeMb * 1024 * 1024; // Convert MB to bytes
 
   const getCurrentStepView = () => {
     switch (step) {

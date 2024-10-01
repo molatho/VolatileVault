@@ -14,12 +14,12 @@ Example:
 ---
 exfil:
   basichttp:
-    max_total_size: 104857600
+    max_total_size: 100
     hosts:
       - 'https://my.cool.site'
 ```
 
 Fields:
 
-- `max_total_size`: Maximum allowed size of a single data transfer (upload or download).
+- `max_total_size`: Maximum allowed size of a single data transfer (upload or download) in MB.
 - `hosts`: (Optional) List of hosts the frontend may use to proxy data transfers through.

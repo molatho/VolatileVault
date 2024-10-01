@@ -83,7 +83,7 @@ export class BasicHTTPExfilProvider
     if (this.config.server) {
       app.disable('x-powered-by');
       app.use(nocache());
-      app.use(bodyParser.urlencoded({ extended: false }));
+      app.use(bodyParser.urlencoded({ extended: false, limit: `${this.config.max_total_size}mb` }));
 
       app.use(getAuthRoute());
 
@@ -105,7 +105,7 @@ export class BasicHTTPExfilProvider
 
     uploadRoute.use(
       bodyParser.raw({
-        limit: this.config.max_total_size,
+        limit: `${this.config.max_total_size}mb`,
         type: 'application/octet-stream',
       })
     );

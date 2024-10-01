@@ -6,22 +6,22 @@ general:
 storage:
   filesystem:
     folder: './files_basic'
-    max_size: 104857600
+    max_size: 100
     file_expiry: 60
 exfil:
   basichttp:
-    max_total_size: 104857600
+    max_total_size: 100
     hosts:
-      - 'https://my.cool.site'
+      - 'https://<changeme.com>'
   awscloudfront:
     access_key_id: '<changeme>'
     secret_access_key: '<changeme>'
     region: '<changeme>'
     distribution_tag: 'volatilevault'
-    domain: my.cool.site
+    domain: <changeme.com>
     folder: './files_aws'
-    chunk_size: 1000000
-    max_total_size: 10000000
+    chunk_size: 10
+    max_total_size: 100 #make sure to whitelist that in your reverse proxy / server
     upload:
       mode: 'Static'
       max_duration: 5
