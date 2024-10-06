@@ -14,7 +14,7 @@ You can specify which storages and exfils to use by configuring them in (or ommi
 
 # Configuration
 
-Volatile Vault uses YAML files for configuration. The server expects to find a `config.yaml` file in its root directory and will refuse to start up if it's missing or invalid. You can find a template [here](config.example.yaml).
+Volatile Vault uses YAML files for configuration. The server expects to find a `config.yaml` file in the `../data` directory and will refuse to start up if it's missing or invalid. You can find a template [here](../data/config.example.yaml).
 
 The config consists of three major parts:
 

@@ -1,0 +1,4 @@
+config*.yaml
+!config.example.yaml
+*.pem
+*.pfx

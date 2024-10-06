@@ -88,8 +88,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
       reportEvent &&
         reportEvent(
           'Control',
-          `TransferID: ${initChunkedData.id}, Chunks: ${
-            initChunkedData.chunks
+          `TransferID: ${initChunkedData.id}, Chunks: ${initChunkedData.chunks
           }, Size: ${formatSize(initChunkedData.size)}`
         );
 
@@ -184,8 +183,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
     reportEvent &&
       reportEvent(
         'Control',
-        `TransferID: ${initChunkedData.id}, Chunks: ${
-          initChunkedData.chunks
+        `TransferID: ${initChunkedData.id}, Chunks: ${initChunkedData.chunks
         }, Size: ${formatSize(initChunkedData.size)}`
       );
 
@@ -254,14 +252,10 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
   }
 
   static PROTO = window.location.protocol;
+
   async initChunkedDownload(id: string): Promise<InitChunkedResponse> {
     const cfg = this.exfilConfig;
-    const host =
-      cfg.download.hosts && cfg.download.hosts.length
-        ? cfg.download.hosts[
-            Math.floor(Math.random() * cfg.download.hosts.length)
-          ]
-        : Api.BASE_URL;
+    const baseUrl = Api.get_baseurl(cfg.download.hosts);
 
     try {
       const res = await axios.post(
@@ -273,7 +267,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
           },
           responseType: 'json',
           withCredentials: true,
-          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
+          baseURL: baseUrl,
         }
       );
 
@@ -307,7 +301,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
           },
           responseType: 'arraybuffer',
           withCredentials: true,
-          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
+          baseURL: Api.get_baseurl([host])
         }
       );
 
@@ -371,7 +365,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
           },
           responseType: 'json',
           withCredentials: true,
-          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
+          baseURL: Api.get_baseurl([host]),
         }
       );
 
@@ -396,12 +390,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
     data: ArrayBuffer
   ): Promise<InitChunkedResponse> {
     const cfg = this.exfilConfig;
-    const host =
-      cfg.download.hosts && cfg.download.hosts.length
-        ? cfg.download.hosts[
-            Math.floor(Math.random() * cfg.download.hosts.length)
-          ]
-        : Api.BASE_URL;
+    const baseUrl = Api.get_baseurl(cfg.upload.hosts);
 
     try {
       const res = await axios.post(
@@ -413,7 +402,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
           },
           responseType: 'json',
           withCredentials: true,
-          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
+          baseURL: baseUrl
         }
       );
 
@@ -453,7 +442,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
           responseType: 'json',
-          baseURL: `${AwsCloudFrontExfil.PROTO}//${host}`,
+          baseURL: Api.get_baseurl([host]),
         }
       );
 

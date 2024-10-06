@@ -15,6 +15,7 @@ import { AwsS3StorageProvider } from './extensions/storage/AwsS3/awss3';
 import { QuicExfilProvider } from './extensions/exfil/Quic/quic';
 import https from 'https';
 import fs from 'fs';
+import proxy from 'express-http-proxy';
 
 const EXTENSIONS = [
   BasicHTTPExfilProvider,
@@ -70,18 +71,12 @@ const main = async (): Promise<void> => {
   app.disable('x-powered-by');
 
   app.use(nocache());
-  app.use(
-    cors({
-      origin: (origin, cb) => {
-        Promise.all(
-          ExtensionRepository.getInstance().exfils.map((e) => e.hosts)
-        ).then((all) => cb(null, all.flat()));
-      },
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Authorization', 'Content-Type'],
-      credentials: true,
-    })
-  ); // TODO: Disable in prod!
+  app.use(cors({
+    origin: true, // Reflects request origin
+    methods: 'OPTIONS,GET,HEAD,PUT,PATCH,POST,DELETE',
+    headers: "authorization,content-type",
+    credentials: true,
+  }));
 
   app.use(bodyParser.urlencoded({ extended: false }));
 
@@ -110,8 +105,6 @@ const main = async (): Promise<void> => {
     return res.status(400).json({ message: error?.message ?? 'Failure' });
   });
 
-  app.use(express.static('public'));
-
   for (const extension of ExtensionRepository.getInstance().exfils) {
     await extension.installCron();
   }
@@ -119,17 +112,23 @@ const main = async (): Promise<void> => {
     await extension.installCron();
   }
 
+  // TODO: Remove in prod - or make configurable via config?
+  const apiProxy = proxy('http://localhost:3000/', {
+    proxyReqPathResolver: (req) => req.path,
+  });
+  app.use('/', apiProxy);
+
   const PORT = ConfigInstance.Inst.general.port || 3000;
   const HOST = ConfigInstance.Inst.general.host || 'localhost';
   if (ConfigInstance.Inst.general.ssl) {
     https
       .createServer({
-          key: fs.readFileSync(ConfigInstance.Inst.general.ssl.key_file),
-          cert: fs.readFileSync(ConfigInstance.Inst.general.ssl.cert_file),
-        },
-      app).listen(PORT, HOST, function () {
-        logger.info(`VolatileVault is listening at https://${HOST}:${PORT}!`);
-      });
+        key: fs.readFileSync(ConfigInstance.Inst.general.ssl.key_file),
+        cert: fs.readFileSync(ConfigInstance.Inst.general.ssl.cert_file),
+      },
+        app).listen(PORT, HOST, function () {
+          logger.info(`VolatileVault is listening at https://${HOST}:${PORT}!`);
+        });
   } else {
     app.listen(PORT, HOST, () => {
       logger.info(`VolatileVault is listening at http://${HOST}:${PORT}!`);

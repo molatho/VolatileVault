@@ -53,8 +53,7 @@ export class CloudFrontWrapper {
       return true;
     } catch (error) {
       this.logger.error(
-        `Failed validating AWS CloudFront credentials: ${
-          error?.message ?? error
+        `Failed validating AWS CloudFront credentials: ${error?.message ?? error
         }`
       );
       return false;
@@ -113,16 +112,16 @@ export class CloudFrontWrapper {
             HeaderBehavior: 'whitelist',
             Headers: {
               Quantity: 1,
-              Items: ['Authorization'],
+              Items: ['Authorization', 'Access-Control-Allow-Origin', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Credentials', 'Access-Control-Allow-Headers'],
             },
           },
           CookiesConfig: {
-            CookieBehavior: 'none', 
+            CookieBehavior: 'none',
           },
           QueryStringsConfig: {
             QueryStringBehavior: 'none',
           },
-        }, 
+        },
       },
     };
 

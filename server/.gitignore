@@ -4,9 +4,6 @@
 npm-debug.log*
 /files*
 
-config*.yaml
-!config.example.yaml
-
 /logs/*.log*
 
 *.pem

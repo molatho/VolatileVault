@@ -7,10 +7,10 @@ import { parse } from 'yaml'
 
 
 export const load = async () : Promise<Config> => {
-    const root = process.cwd();
+    const root = process.cwd(); // "/server"
     
     // Read YAML
-    const cfgPath = path.join(root, "config.yaml");
+    const cfgPath = path.join(root, "..", "data", "config.yaml");
     try {
         await fs.access(cfgPath, constants.R_OK | constants.W_OK);
     } catch (error) {

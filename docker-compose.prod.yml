@@ -3,6 +3,11 @@ services:
   web:
     build: .
     ports:
-      - "80:${BACKEND_PORT}"
+      - 80:80 # HTTP
+      - 443:443 # HTTPS
+      - 1337:1337 # basichttp for use with quic
+      - 5002:5002/udp # QUIC
     restart: always
-    env_file: .env
+    volumes:
+      - ./data:/usr/app/data
+

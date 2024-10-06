@@ -63,17 +63,15 @@ export class BasicHttpExfil extends BaseExfilExtension<ApiConfigBasicHTTPExfil> 
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiDownloadResponse> {
     const cfg = this.cfg.info! as ApiConfigBasicHTTPExfil;
-    const host =
-      cfg.hosts && cfg.hosts.length
-        ? cfg.hosts[Math.floor(Math.random() * cfg.hosts.length)]
-        : Api.BASE_URL;
+    const host = Api.get_baseurl(cfg.hosts);
 
     try {
-      const res = await axios.get(`${host}/api/${this.name}/download/${id}`, {
+      const res = await axios.get(`/api/${this.name}/download/${id}`, {
         headers: {
           Authorization: `Bearer ${this.api.token}`,
         },
         responseType: 'arraybuffer',
+        baseURL: host
       });
 
       if (!res.data)
@@ -100,14 +98,11 @@ export class BasicHttpExfil extends BaseExfilExtension<ApiConfigBasicHTTPExfil> 
     reportEvent?: ReportEvent | undefined
   ): Promise<ApiUploadResponse> {
     const cfg = this.cfg.info! as ApiConfigBasicHTTPExfil;
-    const host =
-      cfg.hosts && cfg.hosts.length
-        ? cfg.hosts[Math.floor(Math.random() * cfg.hosts.length)]
-        : Api.BASE_URL;
+    const host = Api.get_baseurl(cfg.hosts);
 
     try {
       const res = await axios.post(
-        `${host}/api/${this.name}/upload/${storage}`,
+        `/api/${this.name}/upload/${storage}`,
         data,
         {
           headers: {
@@ -117,7 +112,8 @@ export class BasicHttpExfil extends BaseExfilExtension<ApiConfigBasicHTTPExfil> 
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
           responseType: 'json',
-        }
+          baseURL: host
+        },
       );
 
       if (!res.data?.id)

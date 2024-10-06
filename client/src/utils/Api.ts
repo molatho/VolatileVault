@@ -6,7 +6,7 @@ export interface ApiResponse {
   message: string;
 }
 
-export interface ApiGetAuthResponse extends ApiResponse {}
+export interface ApiGetAuthResponse extends ApiResponse { }
 
 export interface ApiAuthResponse extends ApiResponse {
   token?: string;
@@ -72,7 +72,17 @@ export interface ApiConfigBaseStorage {
 
 export default class Api {
   public token?: string = undefined;
-  public static BASE_URL: string = Config.BASE_URL;
+  private static PROTO = window.location.protocol;
+  public static BASE_URL: string = Config.BASE_URL.startsWith(Api.PROTO) ? Config.BASE_URL : `${Api.PROTO}//${Config.BASE_URL}`;
+
+  public static get_baseurl(hosts?: string[]): string {
+    const _hosts = hosts?.
+      map(h => h.includes("://") ? h : `${Api.PROTO}//${h}`).
+      filter(h => h.startsWith(Api.PROTO)) ?? [];
+    if (_hosts.length > 0)
+      return _hosts[Math.floor(Math.random() * _hosts.length)];
+    return Api.BASE_URL;
+  }
 
   public static fail_from_error(
     error: any,
