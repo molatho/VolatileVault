@@ -27,7 +27,6 @@ import {
   FileInformation,
 } from '../provider';
 import cron from 'node-cron';
-import MultiStream from 'multistream';
 import moment from 'moment';
 
 interface ChunkData {
@@ -263,7 +262,7 @@ export class AwsCloudFrontExfilProvider
 
           const size = parseInt(req.params?.size);
           if (Number.isNaN(size) || size <= 0) throw new Error('Invalid size');
-          if (size > this.max_total_size * 1024 * 1024)
+          if (size > this.max_total_size)
             throw new Error('Maximum file size exceeded');
 
           // Validate that storage exists
@@ -330,7 +329,7 @@ export class AwsCloudFrontExfilProvider
     const chunkedUpload = express.Router();
     chunkedUpload.use(
       bodyParser.raw({
-        limit: this.chunk_size * 1024*1024,
+        limit: this.chunk_size,
         type: 'application/octet-stream',
       })
     );
@@ -510,7 +509,7 @@ export class AwsCloudFrontExfilProvider
       'Upload'
     );
 
-    const numChunks = Math.ceil(size / this.chunk_size);
+    const numChunks = Math.ceil(size / (this.chunk_size));
 
     const transfer = {
       id: transferId,
@@ -615,7 +614,13 @@ export class AwsCloudFrontExfilProvider
       })
     );
 
-    const multistream = new MultiStream(files.map((f) => f[0]));
+    const multistream = Readable.from((async function* () {
+      for (const stream of files.map((f) => f[0])) {
+        for await (const chunk of stream) {
+          yield chunk;
+        }
+      }
+    })());//MergeStream(files.map((f) => f[0])); //new MultiStream(files.map((f) => f[0]));
 
     this.logger.debug(
       `Storing combined data of ${transferId} to ${storage.instance_name}...`

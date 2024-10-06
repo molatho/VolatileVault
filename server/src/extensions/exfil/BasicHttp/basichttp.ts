@@ -23,8 +23,7 @@ import { getAuthRoute } from '../../../routes/auth';
 
 export class BasicHTTPExfilProvider
   extends BaseExtension<ExfilProviderCapabilities, ExfilBasicHTTP>
-  implements ExfilProvider
-{
+  implements ExfilProvider {
   private static NAME: string = 'basichttp';
   private logger: winston.Logger;
 
@@ -183,7 +182,8 @@ export class BasicHTTPExfilProvider
             'Content-Length': data.size.toString(),
           });
 
-          for await (const chunk of data.stream) res.write(chunk, 'binary');
+          for await (const chunk of data.stream)
+            res.write(chunk, 'binary');
 
           res.end();
         } catch (error) {

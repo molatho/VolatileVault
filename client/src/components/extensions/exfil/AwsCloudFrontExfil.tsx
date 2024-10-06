@@ -187,7 +187,7 @@ export class AwsCloudFrontExfil extends BaseExfilExtension<ApiConfigAwsCloudFron
         }, Size: ${formatSize(initChunkedData.size)}`
       );
 
-    const chunksize = this.exfilConfig.chunk_size as number;
+    const chunksize = (this.exfilConfig.chunk_size as number) * 1024 * 1024;
     const chunks = Array.from({ length: initChunkedData.chunks }, (_, key) =>
       data.slice(key * chunksize, key * chunksize + chunksize)
     );

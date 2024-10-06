@@ -107,7 +107,10 @@ export class FsUtils {
     if (!(await this.exists(_path))) throw `File "${_path}" does not exist!`;
 
     var stat = await fs.stat(_path);
-    return [fsSync.createReadStream(_path, { flags: 'r' }), stat.size];
+    return [fsSync.createReadStream(_path, {
+      flags: 'r', encoding:
+        null
+    }), stat.size];
   }
 
   public async putFile(data: Readable): Promise<FileInfo> {
@@ -116,7 +119,7 @@ export class FsUtils {
     this.logger.debug(`File: ${file.id}`);
     var str = fsSync.createWriteStream(path.join(this.dir, file.id), {
       flags: 'w',
-      encoding: 'binary',
+      encoding: null,
     });
     this.logger.debug(`Writing to ${str.path}...`);
     await pipeline(data, str);
