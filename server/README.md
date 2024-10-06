@@ -29,5 +29,4 @@ Please refer to the individual plugins' README files for more details on their e
 * Exfils
   * [basichttp](src/extensions/exfil/BasicHttp/README.md)
   * [awscloudfront](src/extensions/exfil/AwsCloudFront/README.md)
-
-At this time there can only be a single instance of each plugin active and configured at a time. This means that you can for example configure both basichttp and awscloudfront exfils, but you can not configure to use two instances of basichttp.
+  * [quic](src/extensions/exfil/Quic/README.md)

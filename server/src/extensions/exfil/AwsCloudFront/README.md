@@ -13,33 +13,36 @@ Example:
 ```yaml
 ---
 exfil:
-  awscloudfront:
-    access_key_id: '<changeme>'
-    secret_access_key: '<changeme>'
-    region: '<changeme>'
-    distribution_tag: 'volatilevault'
-    domain: my.cool.site
-    folder: './files_aws'
-    chunk_size: 10
-    max_total_size: 100
-    upload:
-      mode: 'Static'
-      max_duration: 5
-      hosts:
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-    download:
-      mode: 'Dynamic'
-      max_duration: 15
-      max_dynamic_hosts: 10
+  - type: awscloudfront
+    name: cloudfront
+    display_name: AWS Cloudfront Distributions
+    config:
+      access_key_id: '<changeme>'
+      secret_access_key: '<changeme>'
+      region: '<changeme>'
+      distribution_tag: 'volatilevault'
+      domain: my.cool.site
+      folder: './files_aws'
+      chunk_size: 10
+      max_total_size: 100
+      upload:
+        mode: 'Static'
+        max_duration: 5
+        hosts:
+          - '<dunno>.cloudfront.net'
+          - '<dunno>.cloudfront.net'
+          - '<dunno>.cloudfront.net'
+          - '<dunno>.cloudfront.net'
+          - '<dunno>.cloudfront.net'
+          - '<dunno>.cloudfront.net'
+          - '<dunno>.cloudfront.net'
+          - '<dunno>.cloudfront.net'
+          - '<dunno>.cloudfront.net'
+          - '<dunno>.cloudfront.net'
+      download:
+        mode: 'Dynamic'
+        max_duration: 15
+        max_dynamic_hosts: 10
 ```
 
 Fields:

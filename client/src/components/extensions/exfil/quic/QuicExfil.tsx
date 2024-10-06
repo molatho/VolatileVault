@@ -141,6 +141,7 @@ export class QuicExfil extends BaseExfilExtension<ApiConfigQuicExfil> {
 
       // Receive response to upload
       const wtres_upl = await webTransportService.receiveString();
+      webTransportService.disconnect();
       const res_upl = JSON.parse(wtres_upl);
       if (res_upl?.success !== true || !res_upl.data.id)
         return Promise.reject(

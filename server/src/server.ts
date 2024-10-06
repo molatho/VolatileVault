@@ -122,7 +122,7 @@ const main = async (): Promise<void> => {
   const PORT = ConfigInstance.Inst.general.port || 3000;
   const HOST = ConfigInstance.Inst.general.host || 'localhost';
   if (ConfigInstance.Inst.general.ssl) {
-    var server = https
+    https
       .createServer({
           key: fs.readFileSync(ConfigInstance.Inst.general.ssl.key_file),
           cert: fs.readFileSync(ConfigInstance.Inst.general.ssl.cert_file),

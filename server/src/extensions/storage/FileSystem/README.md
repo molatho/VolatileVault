@@ -13,14 +13,18 @@ Example:
 ```yaml
 ---
 storage:
-  filesystem:
-    folder: './files_basic'
-    max_size: 104857600
-    file_expiry: 60
+  - type: filesystem
+    name: hotstorage
+    display_name: Hot Storage
+    description: Short term storage; files are removed after 5 minutes
+    config:
+      folder: './files_basic'
+      max_size: 100
+      file_expiry: 5
 ```
 
 Fields:
 
 - `folder`: Absolute or relative folder to store files in.
-- `max_size`: Maximum allows size of files to store.
+- `max_size`: Maximum allows size of files to store in MB.
 - `file_expiry`: Duration (in minutes) after which files will be removed automatically.

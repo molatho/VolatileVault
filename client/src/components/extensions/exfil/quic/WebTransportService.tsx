@@ -18,14 +18,7 @@ class WebTransportService {
   }
 
   public async connect(): Promise<void> {
-    this.session = new WebTransport(this.url, {
-      // serverCertificateHashes: [
-      //   {
-      //     algorithm: 'sha-256',
-      //     value: Uint8Array.from(atob(this.hash), (c) => c.charCodeAt(0)),
-      //   },
-      // ],
-    });
+    this.session = new WebTransport(this.url);
 
     await this.session.ready;
     console.log('WebTransport connection established');
@@ -80,9 +73,11 @@ class WebTransportService {
     return new TextDecoder().decode(data);
   }
 
-  public async disconnect(transport: WebTransport): Promise<void> {
+  public async disconnect(): Promise<void> {
+    if (!this.session)
+      throw new Error("Session not initiated!");
     try {
-      transport.close({
+      this.session.close({
         closeCode: 0o17,
         reason: 'CloseButtonPressed',
       });
@@ -99,14 +94,14 @@ class WebTransportService {
       }
     }
     try {
-      await transport.closed;
+      await this.session.closed;
       console.log(`The HTTP/3 connection closed gracefully.`);
     } catch (error) {
       throw new Error(`The HTTP/3 connection closed due to ${error}.`);
     }
   }
 
-  public async waitForTransportClose(transport: WebTransport): Promise<void> {}
+  public async waitForTransportClose(transport: WebTransport): Promise<void> { }
 }
 
 export default WebTransportService;

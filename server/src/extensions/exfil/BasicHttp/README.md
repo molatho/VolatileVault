@@ -13,10 +13,13 @@ Example:
 ```yaml
 ---
 exfil:
-  basichttp:
-    max_total_size: 100
-    hosts:
-      - 'https://my.cool.site'
+  - type: basichttp
+    name: default
+    display_name: 'Basic HTTP Exfiltration'
+    config:
+      max_total_size: 100
+      hosts:
+        - 'https://my.cool.site'
 ```
 
 Fields:

@@ -13,15 +13,18 @@ Example:
 ```yaml
 ---
 storage:
-  awss3:
-    access_key_id: <changeme>
-    secret_access_key: <changeme>
-    region: <changeme>
-    bucket: <changeme>
-    user_arn: arn:aws:iam::<changeme>:user/<changeme>
-    max_size: 104857600
-    file_expiry: 5
-    generate_presigned_urls: true
+  - type: awss3
+    name: awss3bucket
+    display_name: AWS S3 Bucket
+    config:
+      access_key_id: <changeme>
+      secret_access_key: <changeme>
+      region: <changeme>
+      bucket: <changeme>
+      user_arn: arn:aws:iam::<changeme>:user/<changeme>
+      max_size: 104857600
+      file_expiry: 5
+      generate_presigned_urls: true
 ```
 
 Fields:

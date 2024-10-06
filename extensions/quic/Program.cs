@@ -9,10 +9,7 @@ using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Quic;
-using Microsoft.AspNetCore.Server.Kestrel.Https;
 using System.Security.Cryptography.X509Certificates;
-using System.Security.Authentication;
 
 
 await Parser.Default.ParseArguments<RunOptions>(Environment.GetCommandLineArgs())
@@ -40,19 +37,15 @@ static Task RunWebApp(RunOptions quicOptions)
     builder.WebHost.ConfigureKestrel((context, options) =>
     {
         // check if the quicOptions.PfxFile exists
-        if (!System.IO.File.Exists(quicOptions.PfxFile)){
+        if (!System.IO.File.Exists(quicOptions.PfxFile))
+        {
             Console.WriteLine($"Pfx file {quicOptions.PfxFile} does not exist!");
             Environment.Exit(1);
-        }else{
+        }
+        else
+        {
             Console.WriteLine($"Pfx file {quicOptions.PfxFile} found!");
         }
-        
-        // website configured port
-        options.Listen(address, quicOptions.WebPort, listenOptions =>
-        {
-            listenOptions.UseHttps();
-            listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
-        });
 
         // Load certificate and key from PEM files
         X509Certificate2 serverCertificate = null;
@@ -69,21 +62,7 @@ static Task RunWebApp(RunOptions quicOptions)
         // webtransport configured port
         options.Listen(address, quicOptions.QuicPort, listenOptions =>
         {
-
-            // var httpsOptions = new HttpsConnectionAdapterOptions
-            // {
-            //     ServerCertificate = serverCertificate,
-            //     SslProtocols = SslProtocols.Tls13,
-            //     ClientCertificateMode = ClientCertificateMode.NoCertificate,
-            //     CheckCertificateRevocation = false,
-            //     ClientCertificateValidation = (cert, chain, errors) => true,
-            // };
-            // listenOptions.UseHttps(httpsOptions);
-            listenOptions.UseConnectionLogging();
             listenOptions.Protocols = HttpProtocols.Http3;
-
-            //openssl pkcs12 -export -in cert_full.cer -inkey cert.key -out cert.pfx
-            //DISABLE YOUR ADGUARD, IT BREAKS YOUR CERTIFICATE!!
             listenOptions.UseHttps(quicOptions.PfxFile, quicOptions.PfxPass);
         });
     });
@@ -93,9 +72,6 @@ static Task RunWebApp(RunOptions quicOptions)
     builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
     var app = builder.Build();
-
-    // make index.html accessible
-    app.UseFileServer();
 
     app.Use(async (context, next) =>
     {
@@ -133,7 +109,18 @@ static Task RunWebApp(RunOptions quicOptions)
                 direction = stream.Features.GetRequiredFeature<IStreamDirectionFeature>();
                 if (direction.CanRead && direction.CanWrite)
                 {
-                    _ = handleBidirectionalStream(session, stream, quicOptions);
+                    try
+                    {
+                        _ = handleBidirectionalStream(session, stream, quicOptions);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to handle bidirectional stream: {ex.Message}");
+                        stream.Abort();
+                        session.Abort(0x0101);
+                        await stream.DisposeAsync();
+                        break;
+                    }
                 }
                 else
                 {

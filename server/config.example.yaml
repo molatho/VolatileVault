@@ -1,42 +1,93 @@
----
 general:
-  port: 8888
+  host: 0.0.0.0
+  port: 443
+  ssl:
+    key_file: /path/to/privkey.pem
+    cert_file: /path/to/fullchain.pem
   totp_secret: '<changeme>'
   jwt_expiry: 60
 storage:
-  filesystem:
-    folder: './files_basic'
-    max_size: 100
-    file_expiry: 60
+  - type: filesystem
+    name: quickstorage
+    display_name: Quick Storage
+    description: Short term storage; files are removed after 2 minutes.
+    config:
+      folder: './files_bshort'
+      max_size: 100
+      file_expiry: 2
+  - type: filesystem
+    name: coldstorage
+    display_name: Cold Storage
+    description: Files are removed after one hour.
+    config:
+      folder: './files_blong'
+      max_size: 100
+      file_expiry: 60
+  - type: awss3
+    name: awss3bucket
+    display_name: AWS S3 Bucket
+    config:
+      file_expiry: 5
+      max_size: 100
+      access_key_id: '<changeme>'
+      secret_access_key: '<changeme>'
+      region: '<changeme>'
+      bucket: '<changeme>'
+      generate_presigned_urls: true
+      user_arn: 'arn:aws:iam::<changeme>:user/<changeme>'
 exfil:
-  basichttp:
-    max_total_size: 100
-    hosts:
-      - 'https://<changeme.com>'
-  awscloudfront:
-    access_key_id: '<changeme>'
-    secret_access_key: '<changeme>'
-    region: '<changeme>'
-    distribution_tag: 'volatilevault'
-    domain: <changeme.com>
-    folder: './files_aws'
-    chunk_size: 10
-    max_total_size: 100 #make sure to whitelist that in your reverse proxy / server
-    upload:
-      mode: 'Static'
-      max_duration: 5
+  - type: awscloudfront
+    name: cloudfront
+    display_name: AWS Cloudfront Distributions
+    config:
+      region: '<changeme>'
+      access_key_id: '<changeme>'
+      secret_access_key: '<changeme>'
+      distribution_tag: '<changeme>'
+      domain: www.change.me
+      folder: ./files_awscloudfront
+      chunk_size: 10
+      max_total_size: 100
+      upload:
+        mode: Dynamic
+        max_duration: 10
+        max_dynamic_hosts: 3
+      download:
+        mode: Static
+        max_duration: 10
+        hosts:
+          - <changeme>.cloudfront.net
+          - <changeme>.cloudfront.net
+          - <changeme>.cloudfront.net
+  - type: basichttp
+    name: default
+    display_name: 'Basic HTTP Exfiltration'
+    config:
+      max_total_size: 100
       hosts:
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-        - '<dunno>.cloudfront.net'
-    download:
-      mode: 'Dynamic'
-      max_duration: 15
-      max_dynamic_hosts: 10
+        - 'https://www.change.me'
+  - type: basichttp
+    name: internal
+    display_name: 'Basic HTTP Exfiltration, localhost only'
+    config:
+      max_total_size: 100
+      hosts:
+        - 'http://localhost:1337'
+      server:
+        host: 127.0.0.1
+        port: 1337
+  - type: quic
+    name: quic
+    display_name: HTTP/3 & QUIC
+    description: Connects to a separate QUIC server which proxies uploads to an internal basichttp instance.
+    config:
+      bindInterface:
+        host: 0.0.0.0
+        port: 5002
+      hosts:
+        - 'https://www.change.me:5002'
+      serverBinary: 'quic'
+      serverDirectory: '../extensions/quic/bin/Debug/net8.0'
+      ssl:
+        pfx_file: '/path/to/cert.pfx'
+        pfx_pass: '<changeme>'

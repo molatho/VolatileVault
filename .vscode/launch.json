@@ -20,7 +20,7 @@
         "--pfxfile",
         "../../../../../server/cert.pfx",
         "--pfxpass",
-        "",
+        "password",
         "--vvhost",
         "127.0.0.1",
         "--vvport",
@@ -50,10 +50,10 @@
         "5001",
         "--quicport",
         "5002",
-        "--sslcertfile",
-        "../../../../../../server/cert.pem",
-        "--sslkeyfile",
-        "../../../../../../server/cert.key",
+        "--pfxfile",
+        "../../../../../server/cert.pfx",
+        "--pfxpass",
+        "password",
         "--vvhost",
         "127.0.0.1",
         "--vvport",
@@ -63,12 +63,10 @@
       ],
       "cwd": "${workspaceFolder}/extensions/quic/bin/Debug/net8.0",
       "stopAtEntry": false,
-      "serverReadyAction": {
-        "action": "openExternally",
-        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
-      },
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_SYSTEM_NET_HTTP_USESOCKETSHTTPHANDLER": "0",
+        "CLR_OPENSSL_VERSION_OVERRIDE": "1.1"
       },
       "sourceFileMap": {
         "/Views": "${workspaceFolder}/extensions/quic"

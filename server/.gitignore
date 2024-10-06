@@ -13,3 +13,5 @@ config*.yaml
 
 cert.*
 *.cer
+
+/public
