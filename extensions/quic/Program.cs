@@ -137,7 +137,7 @@ static Task RunWebApp(RunOptions quicOptions)
 
 static async Task handleBidirectionalStream(IWebTransportSession session, ConnectionContext stream, RunOptions quicOptions)
 {
-    // TODO: Implement protocol:
+    // Implement protocol:
     //      1) Receive & validate user's JWT
     //      2) Receive & validate no. of chunks to expect from the user
     //      3) Read as many chunks as specified
@@ -158,9 +158,12 @@ static async Task handleBidirectionalStream(IWebTransportSession session, Connec
         try
         {
             await ProcessMessage(request, stream, quicOptions);
+            session.Abort(256 /*No error*/);
+            break;
         }
         catch (Exception ex)
         {
+            Console.WriteLine("Yo bro, why you die?");
             var response = new QuicResponse() { Success = false, Message = ex.Message };
             await SendResponse(stream, response);
         }

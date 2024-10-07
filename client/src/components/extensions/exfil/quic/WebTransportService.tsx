@@ -32,6 +32,7 @@ class WebTransportService {
         console.log('WebTransport connection closed');
       })
       .catch((error) => {
+        console.error('WebTransport connection closed with error:', error);
         throw new Error('WebTransport connection closed with error:', error);
       });
   }
