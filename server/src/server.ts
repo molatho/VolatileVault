@@ -105,18 +105,14 @@ const main = async (): Promise<void> => {
     return res.status(400).json({ message: error?.message ?? 'Failure' });
   });
 
+  app.use(express.static('public'));
+  
   for (const extension of ExtensionRepository.getInstance().exfils) {
     await extension.installCron();
   }
   for (const extension of ExtensionRepository.getInstance().storages) {
     await extension.installCron();
   }
-
-  // TODO: Remove in prod - or make configurable via config?
-  const apiProxy = proxy('http://localhost:3000/', {
-    proxyReqPathResolver: (req) => req.path,
-  });
-  app.use('/', apiProxy);
 
   const PORT = ConfigInstance.Inst.general.port || 3000;
   const HOST = ConfigInstance.Inst.general.host || 'localhost';

@@ -73,7 +73,7 @@ export interface ApiConfigBaseStorage {
 export default class Api {
   public token?: string = undefined;
   private static PROTO = window.location.protocol;
-  public static BASE_URL: string = Config.BASE_URL.startsWith(Api.PROTO) ? Config.BASE_URL : `${Api.PROTO}//${Config.BASE_URL}`;
+  public static BASE_URL: string = Config.BASE_URL ?? window.location.origin;
 
   public static get_baseurl(hosts?: string[]): string {
     const _hosts = hosts?.

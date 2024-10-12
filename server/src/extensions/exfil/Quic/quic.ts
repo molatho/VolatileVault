@@ -24,8 +24,7 @@ import path from 'path';
 
 export class QuicExfilProvider
   extends BaseExtension<ExfilProviderCapabilities, ExfilQuic>
-  implements ExfilProvider
-{
+  implements ExfilProvider {
   private static NAME: string = 'quic';
   private logger: winston.Logger;
 
@@ -53,6 +52,7 @@ export class QuicExfilProvider
       display_name: this.cfg.display_name,
       description: this.cfg.description,
       info: {
+        max_total_size: this.config.max_total_size ?? 100,
         hosts: this.config.hosts,
       }
     };
@@ -94,7 +94,7 @@ export class QuicExfilProvider
     const quicServer = child.spawn(
       path.join(process.cwd(), dir, binary),
       [
-        '--host',
+        '--host', //TODO: Add max_total_size
         c.bindInterface.host,
         '--webport', //TODO: Remove, also from quic server code ¯\_(ツ)_/¯
         '5001',
@@ -114,18 +114,17 @@ export class QuicExfilProvider
       { cwd: path.join(process.cwd(), dir), env: process.env }
     );
 
+    const _logger = Logger.Instance.createChildLogger(
+      `${QuicExfilProvider.NAME}:${this.cfg.name}:Server`
+    );
     // Capture standard output
-    quicServer.stdout.on('data', (data) => {
-      console.log(`-----QUIC Server STDOUT: ${data}`);
-    });
+    quicServer.stdout.on('data', (data) => _logger.info(data));
 
     // Capture standard error
-    quicServer.stderr.on('data', (data) => {
-      console.error(`-----QUIC Server STDERR: ${data}`);
-    });
+    quicServer.stderr.on('data', (data) => _logger.error(data));
   }
 
-  async installRoutes(backendApp: Express): Promise<void> {}
+  async installRoutes(backendApp: Express): Promise<void> { }
 
   // Unsupported methods
   async uploadSingle(

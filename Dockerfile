@@ -19,7 +19,6 @@ RUN dotnet publish -c Release -o out
 FROM node:18-bullseye
 
 WORKDIR /usr/app/
-COPY --from=client /usr/app/client/build/ ./server/public/
 
 RUN wget https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
 RUN dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb
@@ -37,5 +36,6 @@ WORKDIR /usr/app/server/
 COPY server/package*.json ./
 RUN npm install -qy
 COPY server/ ./
+COPY --from=client /usr/app/client/build/ ./public/
 
 CMD ["npm", "start"]
