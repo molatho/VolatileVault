@@ -24,7 +24,8 @@ import path from 'path';
 
 export class QuicExfilProvider
   extends BaseExtension<ExfilProviderCapabilities, ExfilQuic>
-  implements ExfilProvider {
+  implements ExfilProvider
+{
   private static NAME: string = 'quic';
   private logger: winston.Logger;
 
@@ -52,9 +53,9 @@ export class QuicExfilProvider
       display_name: this.cfg.display_name,
       description: this.cfg.description,
       info: {
-        max_total_size: this.config.max_total_size ?? 100,
+        max_size: this.config.max_size ?? 100,
         hosts: this.config.hosts,
-      }
+      },
     };
   }
 
@@ -83,18 +84,25 @@ export class QuicExfilProvider
     const binary = c.serverBinary;
     const dir = c.serverDirectory;
 
-    const ext = globalCfg.exfil.find((e): e is ExtensionItem<ExfilBasicHTTP> => e.type == 'basichttp' && e.name == 'internal' && !!(e.config as ExfilBasicHTTP)?.server);
+    const ext = globalCfg.exfil.find(
+      (e): e is ExtensionItem<ExfilBasicHTTP> =>
+        e.type == 'basichttp' &&
+        e.name == 'internal' &&
+        !!(e.config as ExfilBasicHTTP)?.server
+    );
     if (!ext)
       throw new Error(
         'Running the QUIC extension requires a basichttp instance that runs locally; aborting...'
       );
 
-    this.logger.info(`Spawning QUIC server on https://${c.bindInterface.host}:${c.bindInterface.port}...`)
+    this.logger.info(
+      `Spawning QUIC server on https://${c.bindInterface.host}:${c.bindInterface.port}...`
+    );
 
     const quicServer = child.spawn(
       path.join(process.cwd(), dir, binary),
       [
-        '--host', //TODO: Add max_total_size
+        '--host', //TODO: Add max_size
         c.bindInterface.host,
         '--webport', //TODO: Remove, also from quic server code ¯\_(ツ)_/¯
         '5001',
@@ -124,7 +132,7 @@ export class QuicExfilProvider
     quicServer.stderr.on('data', (data) => _logger.error(data));
   }
 
-  async installRoutes(backendApp: Express): Promise<void> { }
+  async installRoutes(backendApp: Express): Promise<void> {}
 
   // Unsupported methods
   async uploadSingle(

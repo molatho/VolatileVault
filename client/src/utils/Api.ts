@@ -40,7 +40,7 @@ export interface ApiConfigResponse extends ApiResponse {
 
 
 export interface ApiConfigBaseExfil {
-  max_total_size?: number;
+  max_size?: number;
   chunk_size?: number;
 }
 

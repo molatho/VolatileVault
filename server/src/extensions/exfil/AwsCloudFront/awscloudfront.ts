@@ -8,7 +8,7 @@ import {
   ExfilAwsCloudFront,
   ExtensionItem,
   TransferConfig,
-  Config
+  Config,
 } from '../../../config/config';
 import { FsUtils } from '../../../fs';
 import { Logger } from '../../../logging';
@@ -69,12 +69,14 @@ export class AwsCloudFrontExfilProvider
   private staticDownloadIdx: number;
   private staticUploadIdx: number;
 
-  public get max_total_size(): number {
-    return this.config.max_total_size * 1024 * 1024 ?? 100 * 1024 * 1024; // Default to 100MB
+  public get max_size(): number {
+    if (this.config.max_size) return this.config.max_size * 1024 * 1024;
+    return 100 * 1024 * 1024; // Default to 100MB
   }
 
   public get chunk_size(): number {
-    return this.config.chunk_size * 1024 * 1024 ?? 10 * 1024 * 1024; // Default to 10MB
+    if (this.config.chunk_size) return this.config.chunk_size * 1024 * 1024;
+    return 10 * 1024 * 1024; // Default to 10MB
   }
 
   private constructor(cfg: ExtensionItem<ExfilAwsCloudFront>) {
@@ -106,7 +108,7 @@ export class AwsCloudFrontExfilProvider
       display_name: this.cfg.display_name,
       description: this.cfg.description,
       info: {
-        max_total_size: this.config.max_total_size,
+        max_size: this.config.max_size,
         chunk_size: this.config.chunk_size,
         upload: {
           mode: this.config.upload.mode,
@@ -262,7 +264,7 @@ export class AwsCloudFrontExfilProvider
 
           const size = parseInt(req.params?.size);
           if (Number.isNaN(size) || size <= 0) throw new Error('Invalid size');
-          if (size > this.max_total_size)
+          if (size > this.max_size)
             throw new Error('Maximum file size exceeded');
 
           // Validate that storage exists
@@ -326,16 +328,17 @@ export class AwsCloudFrontExfilProvider
     app.use(transferStatus);
 
     // Upload a single chunk
-    const chunkedUpload = express.Router();
+    const chunkedUpload = express.Router(); // TODO: Make it so those body size checks are only performed per sub-route per extension. Currently they're registered globally. Big oof.
     chunkedUpload.use(
       bodyParser.raw({
-        limit: this.chunk_size,
+        limit: this.chunk_size * 100000, // TODO: Don't.
         type: 'application/octet-stream',
       })
     );
 
     chunkedUpload.use((error, req, res, next) => {
       if (error) {
+        this.logger.error(JSON.stringify(error));
         return res.status(413).json({ message: 'Data exceeds size limit' });
       }
       next(error);
@@ -509,7 +512,7 @@ export class AwsCloudFrontExfilProvider
       'Upload'
     );
 
-    const numChunks = Math.ceil(size / (this.chunk_size));
+    const numChunks = Math.ceil(size / this.chunk_size);
 
     const transfer = {
       id: transferId,
@@ -614,13 +617,15 @@ export class AwsCloudFrontExfilProvider
       })
     );
 
-    const multistream = Readable.from((async function* () {
-      for (const stream of files.map((f) => f[0])) {
-        for await (const chunk of stream) {
-          yield chunk;
+    const multistream = Readable.from(
+      (async function* () {
+        for (const stream of files.map((f) => f[0])) {
+          for await (const chunk of stream) {
+            yield chunk;
+          }
         }
-      }
-    })());//MergeStream(files.map((f) => f[0])); //new MultiStream(files.map((f) => f[0]));
+      })()
+    ); //MergeStream(files.map((f) => f[0])); //new MultiStream(files.map((f) => f[0]));
 
     this.logger.debug(
       `Storing combined data of ${transferId} to ${storage.instance_name}...`

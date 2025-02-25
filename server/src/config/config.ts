@@ -41,7 +41,7 @@ export interface StorageFileSystem extends BaseStorage {
 }
 
 export interface BaseExfil {
-  max_total_size?: number;
+  max_size?: number;
   chunk_size?: number;
 }
 
@@ -50,8 +50,7 @@ export interface ServerInfo {
   port: number;
 }
 
-export interface ExfilBasicHTTPServer extends ServerInfo {
-}
+export interface ExfilBasicHTTPServer extends ServerInfo {}
 
 export interface ExfilBasicHTTP extends BaseExfil {
   hosts: string[];

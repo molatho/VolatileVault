@@ -47,7 +47,7 @@ exfil:
       domain: www.change.me
       folder: ./files_awscloudfront
       chunk_size: 10
-      max_total_size: 100
+      max_size: 100
       upload:
         mode: Dynamic
         max_duration: 10
@@ -63,14 +63,14 @@ exfil:
     name: default
     display_name: 'Basic HTTP Exfiltration'
     config:
-      max_total_size: 100
+      max_size: 100
       hosts:
         - 'https://www.change.me'
   - type: basichttp
     name: internal
     display_name: 'Basic HTTP Exfiltration, localhost only'
     config:
-      max_total_size: 100
+      max_size: 100
       hosts:
         - 'http://localhost:1337'
       server:

@@ -23,7 +23,8 @@ import { getAuthRoute } from '../../../routes/auth';
 
 export class BasicHTTPExfilProvider
   extends BaseExtension<ExfilProviderCapabilities, ExfilBasicHTTP>
-  implements ExfilProvider {
+  implements ExfilProvider
+{
   private static NAME: string = 'basichttp';
   private logger: winston.Logger;
 
@@ -82,7 +83,12 @@ export class BasicHTTPExfilProvider
     if (this.config.server) {
       app.disable('x-powered-by');
       app.use(nocache());
-      app.use(bodyParser.urlencoded({ extended: false, limit: `${this.config.max_total_size}mb` }));
+      app.use(
+        bodyParser.urlencoded({
+          extended: false,
+          limit: `${this.config.max_size}mb`,
+        })
+      );
 
       app.use(getAuthRoute());
 
@@ -104,13 +110,15 @@ export class BasicHTTPExfilProvider
 
     uploadRoute.use(
       bodyParser.raw({
-        limit: `${this.config.max_total_size}mb`,
+        limit: `${this.config.max_size}mb`,
         type: 'application/octet-stream',
       })
     );
 
     uploadRoute.use((error, req, res, next) => {
       if (error) {
+        this.logger.error(JSON.stringify(error));
+        this.logger.info(JSON.stringify(this.config));
         return res.status(413).json({ message: 'Data exceeds size limit' });
       }
       next(error);
@@ -182,8 +190,7 @@ export class BasicHTTPExfilProvider
             'Content-Length': data.size.toString(),
           });
 
-          for await (const chunk of data.stream)
-            res.write(chunk, 'binary');
+          for await (const chunk of data.stream) res.write(chunk, 'binary');
 
           res.end();
         } catch (error) {
@@ -199,7 +206,9 @@ export class BasicHTTPExfilProvider
     if (this.config.server) {
       return new Promise((res, rej) => {
         app.listen(this.config.server.port, this.config.server.host, () => {
-          this.logger.info(`Listening on ${this.config.server.host}:${this.config.server.port}`)
+          this.logger.info(
+            `Listening on ${this.config.server.host}:${this.config.server.port}`
+          );
           res();
         });
         app.on('error', rej);

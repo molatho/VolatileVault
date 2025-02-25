@@ -466,7 +466,7 @@ export default function GenericHttpUpload({
 
   const steps = ['Data Input', 'Process & Upload', 'Done'];
 
-  const maxSizeMb = exfil.getConfig().max_total_size ?? 0;
+  const maxSizeMb = exfil.getConfig().max_size ?? 0;
   const maxSize = maxSizeMb * 1024 * 1024; // Convert MB to bytes
 
   const getCurrentStepView = () => {

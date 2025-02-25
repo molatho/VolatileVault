@@ -17,12 +17,12 @@ exfil:
     name: default
     display_name: 'Basic HTTP Exfiltration'
     config:
-      max_total_size: 100
+      max_size: 100
       hosts:
         - 'https://my.cool.site'
 ```
 
 Fields:
 
-- `max_total_size`: Maximum allowed size of a single data transfer (upload or download) in MB.
+- `max_size`: Maximum allowed size of a single data transfer (upload or download) in MB.
 - `hosts`: (Optional) List of hosts the frontend may use to proxy data transfers through.
