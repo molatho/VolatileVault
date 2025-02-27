@@ -9,6 +9,24 @@
   
 </div>
 
+> [!WARNING]
+> **Disclaimer:** This repository, including all code, scripts, and documentation contained herein, is provided by NVISO exclusively for educational and informational purposes. The contents of this repository are intended to be used solely as a learning resource. The authors of this repository expressly disclaim any responsibility for any misuse or unintended application of the tools, code, or information provided within this repository.
+> Users are solely responsible for ensuring that their use of the repository complies with applicable laws and regulations. The authors of this repository do not provide any warranties or guarantees regarding the accuracy, completeness, or suitability of the contents for any particular purpose.
+> If you do not agree with these terms, you are advised not to use or access this repository.
+
+# Table of Contents
+- [Screenshots](#screenshots)
+- [Use Cases](#use-cases)
+- [Features](#features)
+  - [Plugin Concept](#plugin-concept)
+  - [Roadmap](#roadmap)
+  - [FAQs](#faqs)
+- [Usage / Installation](#usage--installation)
+  - [Deployment](#deployment)
+  - [Development](#development)
+- [Contributing](#contributing)
+
+
 # Screenshots
 
 <div align="center">
@@ -59,6 +77,16 @@ A: TOTP was chosen for its simplicity and implications for security: it's easy t
 > Q: Why do I need to enter the TOTP every time I open/refresh the page? Can't use our session after authenticating?
 
 A: This application is not meant to be used over long time periods but only for exfiltrating data in select instances. Furthermore, by avoiding saving cookies or using localStorage, its footprint on the target system is reduced even further.
+
+# Detection
+
+We recommend implementing thorough network monitoring in any corporate context. Detection of network activity related to usage of VolatileVault could be detected based on:
+- Multiple transmissions of similar size to newly registered CloudFront domains.
+- Large uploads via QUIC.
+
+Additionally, in case TLS introspection is performed, one could scan for IOCs associated with VolatileVault, such as static strings:
+- `Non-functional dummy storage. This won't do anything and is only used for testing the frontend. It offers all capabilities Volatile Vault provides to storage extensions.` (taken from [DummyStorage](https://github.com/molatho/VolatileVault/blob/b0d79e908f7d92c05aabbdea181a2dec88580956/client/src/components/extensions/storage/DummyStorage.tsx#L15))
+- `Welcome to Volatile Vault. This screen gives you fine-grained control over the way your data is being uploaded, downloaded and stored. Use the following wizard to configure your up- & downloads!` (taken from [BasicWizard](https://github.com/molatho/VolatileVault/blob/78afd19cb51eb26d71de25f8300ed6483d4604e3/client/src/components/BasicWizard.tsx#L214))
 
 # Usage / Installation
 
